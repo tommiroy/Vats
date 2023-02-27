@@ -87,29 +87,3 @@ pub fn reconstruct_secret_key(shares: Vec<(u32, Scalar)>, pk: RistrettoPoint) {
     }
     assert_eq!(&RISTRETTO_BASEPOINT_TABLE * &y, pk);
 }
-// -----------------------------------------------------------------
-// Chelsea's methods
-pub(crate) fn calculate_lagrange_coefficients(
-    participant_index: &u32,
-    all_participant_indices: &[u32],
-) -> Result<Scalar, &'static str> {
-    let mut num = Scalar::one();
-    let mut den = Scalar::one();
-
-    let mine = Scalar::from(*participant_index);
-
-    for j in all_participant_indices.iter() {
-        if j == participant_index {
-            continue;
-        }
-        let s = Scalar::from(*j);
-
-        num *= s;
-        den *= s - mine; // Check to ensure that one person isn't trying to sign twice.
-    }
-
-    if den == Scalar::zero() {
-        return Err("Duplicate shares provided");
-    }
-    Ok(num * den.invert())
-}

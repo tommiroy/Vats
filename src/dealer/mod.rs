@@ -8,14 +8,15 @@ use flume::Receiver;
 use rand::rngs::OsRng;
 use sha2::digest::typenum::private::PrivateIntegerAdd;
 
-mod dumb_keygen;
-
+mod keyAgg;
+mod keygen;
+mod muSigCoef;
 pub fn bl() {
     // Example usage
     let t = 3; // threshold
     let n = 5; // number of participants
 
-    let (sks, pks, pk) = dumb_keygen::keygen(t, n);
+    let (sks, pks, pk) = keygen::keygen(t, n);
 
     // println!("Secret shares:");
     // for i in 0..n {
@@ -42,19 +43,14 @@ pub fn bl() {
 
     for i in 0..5 {
         let test_list = pick_random_elements(sks.clone(), t);
-        dumb_keygen::reconstruct_secret_key(test_list.clone(), pk);
+        keygen::reconstruct_secret_key(test_list.clone(), pk);
         println!("Reconstructing secret key suceeded, try {}", i + 1);
     }
 
-    // lagrange interpolation to reconstruct the secret key with Scaler
-    // let mut sk = Scalar::zero();
-    // for i in 0..n {
-    //     let mut l = Scalar::one();
-    //     for j in 0..n {
-    //         if i != j {
-    //             l *= Scalar::from((j + 1) as u32) / (Scalar::from((j + 1) as u32) - Scalar::from((i + 1) as u32));
-    //         }
-    //     }
-    //     sk += &sks[i].1 * &l;
-    // }
+    let hash = muSigCoef::muSigCoef(pks.clone(), pks[0]);
+    println!("Hash: {:?}", hash);
+    let hash2 = muSigCoef::muSigCoef(pks.clone(), pks[1]);
+    println!("Hash: {:?}", hash2);
+    let keyagg = keyAgg::keyAgg(pks);
+    println!("KeyAgg:  {:?}", keyagg);
 }
