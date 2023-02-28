@@ -25,6 +25,7 @@ pub fn bl() {
 
     let (sks, pks, pk) = keygen::keygen(t, n);
 
+    let participants = vec![1, 2, 3, 4, 5];
     // println!("Secret shares:");
     // for i in 0..n {
     //     println!("s_{} = {:?}", i + 1, sks[i].1.to_bytes());
@@ -58,10 +59,23 @@ pub fn bl() {
     println!("Hash: \n  {:?}\n", hash);
     let hash2 = muSigCoef::muSigCoef(pks.clone(), pks[1]);
     println!("Hash: \n  {:?}\n", hash2);
-    let keyagg = keyAgg::keyAgg(pks);
+    let keyagg = keyAgg::keyAgg(pks.clone());
     println!("KeyAgg:  \n  {:?}\n", keyagg);
     let signoff = signOff::signOff(v);
     println!("signOff(nonce Maker):\n  {:?}\n", signoff);
-    let signagg = signAgg::signAgg(signoff.1, v);
+    let signagg = signAgg::signAgg(signoff.clone().1, v);
     println!("Signing aggregator:  \n  {:?}\n", signagg);
+    let lagrange_coeff = signOn::compute_lagrange_coefficient(participants, 2);
+    println!("Lagrange coefficients:  \n  {:?}\n", lagrange_coeff);
+    let signon = signOn::SignOn(
+        signoff.1,
+        signoff.0,
+        "Hello World".to_string(),
+        sks[0],
+        pks[0],
+        pks,
+        lagrange_coeff,
+    );
+    println!("Signing on:  \n  {:?}\n", signon);
+    todo!("check mod https://doc.dalek.rs/curve25519_dalek/constants/index.html");
 }
