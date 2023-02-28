@@ -13,5 +13,5 @@ pub fn signOff(v: u32) -> (Vec<RistrettoPoint>, Vec<Scalar>) {
         state1.push(r);
         out1.push(&RISTRETTO_BASEPOINT_TABLE * &r);
     }
-    return (out1, state1);
+    (out1, state1)
 }
