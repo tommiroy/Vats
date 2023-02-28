@@ -1,7 +1,6 @@
 use super::muSigCoef;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use sha2::{Digest, Sha512};
 
 // S is signing committee members public keys
 pub fn keyAgg(S: Vec<RistrettoPoint>) -> Scalar {

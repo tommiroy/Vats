@@ -1,19 +1,14 @@
-//  Imports 
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
 
-
-pub fn signAgg(Rs: Vec<Vec<RistrettoPoint>>) -> Vec<RistrettoPoint> {
-    let rslen = Rs.len();
-    let mut outs: Vec<Vec<RistrettoPoint>> = Vec::with_capacity(rslen); // Does this work????
-    for i in 0..rslen {
-        let mut out: Vec<RistrettoPoint>= Vec::with_capacity(rslen);
-        for r in Rs.clone() {
-            out.push(r[i]);
-        }
-        outs.push(out);
+pub fn signAgg(out: Vec<Scalar>, v: u32) -> Scalar {
+    let mut outi = Vec::<Scalar>::new();
+    for i in 0..v {
+        outi.push(out[i as usize]);
     }
-
-
-    outs
+    let mut rj = Scalar::one();
+    for i in 0..v {
+        rj *= outi[i as usize];
+    }
+    rj
 }

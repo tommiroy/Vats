@@ -8,16 +8,21 @@ use flume::Receiver;
 use rand::rngs::OsRng;
 use sha2::digest::typenum::private::PrivateIntegerAdd;
 
+use crate::dealer::signAgg::signAgg;
+use crate::dealer::signOff::signOff;
+
 mod keyAgg;
 mod keygen;
 mod muSigCoef;
-mod signOff;
 mod signAgg;
+mod signOff;
+mod signOn;
 
 pub fn bl() {
     // Example usage
     let t = 3; // threshold
     let n = 5; // number of participants
+    let v = 2; // number of nonces
 
     let (sks, pks, pk) = keygen::keygen(t, n);
 
@@ -51,9 +56,13 @@ pub fn bl() {
     }
 
     let hash = muSigCoef::muSigCoef(pks.clone(), pks[0]);
-    println!("Hash: {:?}", hash);
+    println!("Hash: \n  {:?}\n", hash);
     let hash2 = muSigCoef::muSigCoef(pks.clone(), pks[1]);
-    println!("Hash: {:?}", hash2);
+    println!("Hash: \n  {:?}\n", hash2);
     let keyagg = keyAgg::keyAgg(pks);
-    println!("KeyAgg:  {:?}", keyagg);
+    println!("KeyAgg:  \n  {:?}\n", keyagg);
+    let signoff = signOff::signOff(v);
+    println!("signOff(nonce Maker):\n  {:?}\n", signoff);
+    let signagg = signAgg::signAgg(signoff.1, v);
+    println!("Signing aggregator:  \n  {:?}\n", signagg);
 }
