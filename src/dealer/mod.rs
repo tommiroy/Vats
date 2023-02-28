@@ -11,6 +11,9 @@ use sha2::digest::typenum::private::PrivateIntegerAdd;
 mod keyAgg;
 mod keygen;
 mod muSigCoef;
+mod signOff;
+mod signAgg;
+
 pub fn bl() {
     // Example usage
     let t = 3; // threshold
