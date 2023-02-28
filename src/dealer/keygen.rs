@@ -4,11 +4,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
-use futures::future::Shared;
 use rand::rngs::OsRng;
-
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 
 // Generate a threshold Shamir secret sharing with Feldman VSS
 pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, RistrettoPoint) {
