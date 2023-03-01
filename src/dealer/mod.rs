@@ -18,6 +18,7 @@ mod signAgg;
 mod signAgg2;
 mod signOff;
 mod signOn;
+mod verification;
 
 pub fn bl() {
     // Example usage
@@ -83,5 +84,15 @@ pub fn bl() {
     z_list.push(signon.1);
     let keyAgg = signAgg2::SignAgg2(z_list);
     print!("Key aggregating the shares,  \n  {:?}\n", keyAgg);
+
+    pub fn sign(state_prim: RistrettoPoint, out_prim: Scalar) -> (RistrettoPoint, Scalar) {
+        (state_prim, out_prim)
+    }
+
+    let signature = sign(signon.0, keyAgg);
+    println!("Signing:  \n  {:?}\n", signature);
+    //ver(m: String, pk_lambda: RistrettoPoint, signature: (RistrettoPoint, Scalar)) -> bool
+    verification::ver("Hello World".to_string(), signon.2, signature);
+
     todo!("check mod https://doc.dalek.rs/curve25519_dalek/constants/index.html");
 }

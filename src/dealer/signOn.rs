@@ -14,7 +14,7 @@ pub fn SignOn(
     pk: RistrettoPoint,
     L: Vec<RistrettoPoint>,
     lagrange_coeff: Scalar,
-) -> (RistrettoPoint, Scalar) {
+) -> (RistrettoPoint, Scalar, RistrettoPoint) {
     let rho_i = muSigCoef(L.clone(), pk);
     let tilde_y = keyAgg(L);
     // hash b_pre with sha512
@@ -45,7 +45,7 @@ pub fn SignOn(
     // calculate z_1
     let z_1 = sk.1 * c * rho_i * lagrange_coeff + rhf;
 
-    (prod, z_1)
+    (prod, z_1, tilde_y)
 }
 
 // Helpers
@@ -54,10 +54,10 @@ pub fn SignOn(
 //
 // For hashing the message with sha512 and returning a Scalar hashing PK, (R,..R), m
 
-fn hash_sig(tilde_y: Scalar, r: RistrettoPoint, m: String) -> Scalar {
+pub fn hash_sig(tilde_y: RistrettoPoint, r: RistrettoPoint, m: String) -> Scalar {
     let mut hasher = Sha512::new();
     // hash b_pre
-    hasher.update(tilde_y.as_bytes());
+    hasher.update(tilde_y.compress().as_bytes());
     hasher.update(r.compress().as_bytes());
     hasher.update(m.as_bytes());
     let result = hasher.finalize();
@@ -66,10 +66,10 @@ fn hash_sig(tilde_y: Scalar, r: RistrettoPoint, m: String) -> Scalar {
     Scalar::from_bytes_mod_order_wide(&result_bytes)
 }
 
-fn hash_non(tilde_y: Scalar, out: Vec<RistrettoPoint>, m: String) -> RistrettoPoint {
+pub fn hash_non(tilde_y: RistrettoPoint, out: Vec<RistrettoPoint>, m: String) -> RistrettoPoint {
     let mut hasher = Sha512::new();
     // hash b_pre
-    hasher.update(tilde_y.as_bytes());
+    hasher.update(tilde_y.compress().as_bytes());
     for i in 0..out.len() {
         hasher.update(out[i].compress().as_bytes());
     }
