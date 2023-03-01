@@ -23,7 +23,7 @@ mod verification;
 pub fn bl() {
     // Example usage
     let t = 3; // threshold
-    let n = 5; // number of participants
+    let n = 5; // number of participants.clone()
     let v = 2; // number of nonces
 
     let (sks, pks, pk) = keygen::keygen(t, n);
@@ -57,31 +57,78 @@ pub fn bl() {
         keygen::reconstruct_secret_key(test_list.clone(), pk);
         println!("Reconstructing secret key suceeded, try {}", i + 1);
     }
-
-    let hash = muSigCoef::muSigCoef(pks.clone(), pks[0]);
-    println!("Hash: \n  {:?}\n", hash);
-    let hash2 = muSigCoef::muSigCoef(pks.clone(), pks[1]);
-    println!("Hash: \n  {:?}\n", hash2);
-    let keyagg = keyAgg::keyAgg(pks.clone());
-    println!("KeyAgg:  \n  {:?}\n", keyagg);
+    // Works until here confirmed...
+    //
+    let _hash = muSigCoef::muSigCoef(pks.clone(), pks[0]);
+    //
+    let _hash2 = muSigCoef::muSigCoef(pks.clone(), pks[1]);
+    //
+    let _keyagg = keyAgg::keyAgg(pks.clone());
+    //
     let signoff = signOff::signOff(v);
-    println!("signOff(nonce Maker):\n  {:?}\n", signoff);
-    let signagg = signAgg::signAgg(signoff.clone().1, v);
-    println!("Signing aggregator:  \n  {:?}\n", signagg);
-    let lagrange_coeff = signOn::compute_lagrange_coefficient(participants, 2);
+    //
+    let _signagg = signAgg::signAgg(signoff.clone().1, v);
+    //
+    let lagrange_coeff = signOn::compute_lagrange_coefficient(participants.clone(), 0);
+    let lagrange_coeff_1 = signOn::compute_lagrange_coefficient(participants.clone(), 1);
+    let lagrange_coeff_2 = signOn::compute_lagrange_coefficient(participants.clone(), 2);
+    let lagrange_coeff_3 = signOn::compute_lagrange_coefficient(participants.clone(), 3);
+    let lagrange_coeff_4 = signOn::compute_lagrange_coefficient(participants, 4);
     println!("Lagrange coefficients:  \n  {:?}\n", lagrange_coeff);
     let signon = signOn::SignOn(
-        signoff.1,
-        signoff.0,
+        signoff.1.clone(),
+        signoff.0.clone(),
         "Hello World".to_string(),
         sks[0],
-        pks[0],
-        pks,
+        pks.clone()[0],
+        pks.clone(),
         lagrange_coeff,
+    );
+    let signon_1 = signOn::SignOn(
+        signoff.1.clone(),
+        signoff.0.clone(),
+        "Hello World".to_string(),
+        sks[1],
+        pks.clone()[1],
+        pks.clone(),
+        lagrange_coeff_1,
+    );
+    let signon_2 = signOn::SignOn(
+        signoff.1.clone(),
+        signoff.0.clone(),
+        "Hello World".to_string(),
+        sks[2],
+        pks.clone()[2],
+        pks.clone(),
+        lagrange_coeff_2,
+    );
+    let signon_3 = signOn::SignOn(
+        signoff.1.clone(),
+        signoff.0.clone(),
+        "Hello World".to_string(),
+        sks[3],
+        pks.clone()[3],
+        pks.clone(),
+        lagrange_coeff_3,
+    );
+    let signon_4 = signOn::SignOn(
+        signoff.1.clone(),
+        signoff.0,
+        "Hello World".to_string(),
+        sks[3],
+        pks.clone()[3],
+        pks,
+        lagrange_coeff_4,
     );
     println!("Signing on:  \n  {:?}\n", signon);
     let mut z_list = Vec::with_capacity(n);
     z_list.push(signon.1);
+    z_list.push(signon_1.1);
+    z_list.push(signon_2.1);
+    z_list.push(signon_3.1);
+    z_list.push(signon_4.1);
+    //
+    //
     let keyAgg = signAgg2::SignAgg2(z_list);
     print!("Key aggregating the shares,  \n  {:?}\n", keyAgg);
 
