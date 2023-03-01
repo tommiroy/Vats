@@ -52,7 +52,8 @@ pub fn bl() {
         list
     }
 
-    for i in 0..5 {
+    //keygen::reconstruct_secret_key(sks.clone(), pk);
+    for i in 0..10 {
         let test_list = pick_random_elements(sks.clone(), t);
         keygen::reconstruct_secret_key(test_list.clone(), pk);
         println!("Reconstructing secret key suceeded, try {}", i + 1);
@@ -69,12 +70,17 @@ pub fn bl() {
     //
     let _signagg = signAgg::signAgg(signoff.clone().1, v);
     //
-    let lagrange_coeff = signOn::compute_lagrange_coefficient(participants.clone(), 0);
-    let lagrange_coeff_1 = signOn::compute_lagrange_coefficient(participants.clone(), 1);
-    let lagrange_coeff_2 = signOn::compute_lagrange_coefficient(participants.clone(), 2);
-    let lagrange_coeff_3 = signOn::compute_lagrange_coefficient(participants.clone(), 3);
-    let lagrange_coeff_4 = signOn::compute_lagrange_coefficient(participants, 4);
-    println!("Lagrange coefficients:  \n  {:?}\n", lagrange_coeff);
+    let lagrange_coeff = signOn::compute_lagrange_coefficient(sks.clone(), 1);
+    let lagrange_coeff_1 = signOn::compute_lagrange_coefficient(sks.clone(), 2);
+    let lagrange_coeff_2 = signOn::compute_lagrange_coefficient(sks.clone(), 3);
+    let lagrange_coeff_3 = signOn::compute_lagrange_coefficient(sks.clone(), 4);
+    let lagrange_coeff_4 = signOn::compute_lagrange_coefficient(sks.clone(), 5);
+    println!("Lagrange coefficients for 1:  \n  {:?}\n", lagrange_coeff);
+    println!("Lagrange coefficients for 2:  \n  {:?}\n", lagrange_coeff_1);
+    println!("Lagrange coefficients for 3:  \n  {:?}\n", lagrange_coeff_2);
+    println!("Lagrange coefficients for 4:  \n  {:?}\n", lagrange_coeff_3);
+    println!("Lagrange coefficients for 5:  \n  {:?}\n", lagrange_coeff_4);
+    println!("shares \n  {:?}\n", sks);
     let signon = signOn::SignOn(
         signoff.1.clone(),
         signoff.0.clone(),
@@ -115,12 +121,11 @@ pub fn bl() {
         signoff.1.clone(),
         signoff.0,
         "Hello World".to_string(),
-        sks[3],
-        pks.clone()[3],
+        sks[4],
+        pks.clone()[4],
         pks,
         lagrange_coeff_4,
     );
-    println!("Signing on:  \n  {:?}\n", signon);
     let mut z_list = Vec::with_capacity(n);
     z_list.push(signon.1);
     z_list.push(signon_1.1);
@@ -129,17 +134,14 @@ pub fn bl() {
     z_list.push(signon_4.1);
     //
     //
-    let keyAgg = signAgg2::SignAgg2(z_list);
-    print!("Key aggregating the shares,  \n  {:?}\n", keyAgg);
+    let signAgg2 = signAgg2::SignAgg2(z_list.clone());
 
     pub fn sign(state_prim: RistrettoPoint, out_prim: Scalar) -> (RistrettoPoint, Scalar) {
         (state_prim, out_prim)
     }
 
-    let signature = sign(signon.0, keyAgg);
-    println!("Signing:  \n  {:?}\n", signature);
-    //ver(m: String, pk_lambda: RistrettoPoint, signature: (RistrettoPoint, Scalar)) -> bool
+    let signature = sign(signon.0, signAgg2);
+    //println!("Signing:  \n  {:?}\n", signature);
+    ////ver(m: String, pk_lambda: RistrettoPoint, signature: (RistrettoPoint, Scalar)) -> bool
     verification::ver("Hello World".to_string(), signon.2, signature);
-
-    todo!("check mod https://doc.dalek.rs/curve25519_dalek/constants/index.html");
 }

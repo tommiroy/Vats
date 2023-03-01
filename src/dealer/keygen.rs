@@ -68,7 +68,7 @@ pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, R
 }
 
 // Reconstruct the secret key from the shares using Lagrange interpolation
-pub fn reconstruct_secret_key(shares: Vec<(u32, Scalar)>, pk: RistrettoPoint) {
+pub fn reconstruct_secret_key(shares: Vec<(u32, Scalar)>, pk: RistrettoPoint) -> Scalar {
     let mut y = Scalar::zero();
     for (x0, y0) in shares.iter() {
         let mut li = Scalar::one();
@@ -78,8 +78,8 @@ pub fn reconstruct_secret_key(shares: Vec<(u32, Scalar)>, pk: RistrettoPoint) {
                 li *= lui;
             }
         }
-
         y += li * y0;
     }
     assert_eq!(&RISTRETTO_BASEPOINT_TABLE * &y, pk);
+    y
 }

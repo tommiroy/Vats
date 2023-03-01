@@ -1,3 +1,4 @@
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
@@ -21,31 +22,35 @@ pub fn SignOn(
     let b = hash_non(tilde_y, out.clone(), m.clone());
 
     // prod = out[j]^(b^(j-1))
-    let mut prod = RistrettoPoint::identity();
+    let mut big_r = RistrettoPoint::identity();
     for j in 0..out.len() {
         let bpowj = b * Scalar::from((j) as u32);
         // make bpowj a scalar
         let bpowj = Scalar::from_bytes_mod_order(*bpowj.compress().as_bytes());
-        prod += out[j] * bpowj;
+        big_r += out[j] * bpowj;
     }
 
     // compute challenge
-    let c = hash_sig(tilde_y, prod, m);
+    let c = hash_sig(tilde_y, big_r, m.clone());
 
+    println!("HASHING SIGNATURE ON HASHON! {:?}", c);
     // make z_1
 
-    let mut rhf = RistrettoPoint::identity();
+    let mut rhf = Scalar::zero();
     for j in 0..out.len() {
         let bpowj = b * Scalar::from((j) as u32);
         // make bpowj a scalar
-        rhf += state1[j] * bpowj;
+        let temp = state1[j] * bpowj;
+        // make rhf to Scaler
+        rhf += Scalar::from_bytes_mod_order(*temp.compress().as_bytes());
     }
-    // make rhf a scalar
-    let rhf = Scalar::from_bytes_mod_order(*rhf.compress().as_bytes());
     // calculate z_1
-    let z_1 = sk.1 * c * rho_i * lagrange_coeff + rhf;
+    assert_eq!(&RISTRETTO_BASEPOINT_TABLE * &rhf, big_r);
+    let z_1 = c * rho_i * (sk.1 * lagrange_coeff) + rhf;
 
-    (prod, z_1, tilde_y)
+    //let z_1 = sk.1 * lagrange_coeff;
+
+    (big_r, z_1, tilde_y)
 }
 
 // Helpers
@@ -81,18 +86,14 @@ pub fn hash_non(tilde_y: RistrettoPoint, out: Vec<RistrettoPoint>, m: String) ->
     RistrettoPoint::from_uniform_bytes(&result_bytes)
 }
 
-pub fn compute_lagrange_coefficient(shares: Vec<u32>, i: usize) -> Scalar {
-    let x_i = Scalar::from(shares[i] as u64);
-    let mut lagrange_coefficient = Scalar::one();
-
-    for (j, x_j) in shares.iter().enumerate() {
-        if i == j {
-            continue;
+pub fn compute_lagrange_coefficient(shares: Vec<(u32, Scalar)>, x0: u32) -> Scalar {
+    let mut li = Scalar::one();
+    for (x1, _) in shares.iter() {
+        if *x1 != x0 {
+            let lui = Scalar::from(*x1) * (Scalar::from(*x1) - Scalar::from(x0)).invert();
+            li *= lui;
         }
-        let x_j = Scalar::from(*x_j as u64);
-        let inv = x_j - x_i;
-        lagrange_coefficient *= inv.invert();
     }
 
-    lagrange_coefficient
+    li
 }
