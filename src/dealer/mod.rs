@@ -15,6 +15,7 @@ mod keyAgg;
 mod keygen;
 mod muSigCoef;
 mod signAgg;
+mod signAgg2;
 mod signOff;
 mod signOn;
 
@@ -78,5 +79,9 @@ pub fn bl() {
         lagrange_coeff,
     );
     println!("Signing on:  \n  {:?}\n", signon);
+    let mut z_list = Vec::with_capacity(n);
+    z_list.push(signon.1);
+    let keyAgg = signAgg2::SignAgg2(z_list);
+    print!("Key aggregating the shares,  \n  {:?}\n", keyAgg);
     todo!("check mod https://doc.dalek.rs/curve25519_dalek/constants/index.html");
 }
