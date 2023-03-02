@@ -9,6 +9,7 @@ use rand::rngs::OsRng;
 use sha2::digest::typenum::private::PrivateIntegerAdd;
 
 use crate::dealer::signAgg::signAgg;
+use crate::dealer::signAgg::test_signagg;
 use crate::dealer::signOff::signOff;
 
 mod keyAgg;
@@ -66,9 +67,22 @@ pub fn bl() {
     //
     let _keyagg = keyAgg::keyAgg(pks.clone());
     //
+    let mut sigagg_list = Vec::<(Vec<RistrettoPoint>)>::new();
+
     let signoff = signOff::signOff(v);
+    let signoff_1 = signOff::signOff(v);
+    let signoff_2 = signOff::signOff(v);
+    let signoff_3 = signOff::signOff(v);
+    let signoff_4 = signOff::signOff(v);
+
+    sigagg_list.push(signoff.0);
+    sigagg_list.push(signoff_1.0);
+    sigagg_list.push(signoff_2.0);
+    sigagg_list.push(signoff_3.0);
+    sigagg_list.push(signoff_4.0);
+
     //
-    let _signagg = signAgg::signAgg(signoff.clone().1, v);
+    let sigagg = signAgg::signAgg(sigagg_list.clone(), v);
     //
     let lagrange_coeff = signOn::compute_lagrange_coefficient(sks.clone(), 1);
     let lagrange_coeff_1 = signOn::compute_lagrange_coefficient(sks.clone(), 2);
@@ -77,7 +91,7 @@ pub fn bl() {
     let lagrange_coeff_4 = signOn::compute_lagrange_coefficient(sks.clone(), 5);
     let signon = signOn::SignOn(
         signoff.1.clone(),
-        signoff.0.clone(),
+        sigagg.clone(),
         "Hello World".to_string(),
         sks[0],
         pks.clone()[0],
@@ -85,8 +99,8 @@ pub fn bl() {
         lagrange_coeff,
     );
     let signon_1 = signOn::SignOn(
-        signoff.1.clone(),
-        signoff.0.clone(),
+        signoff_1.1.clone(),
+        sigagg.clone(),
         "Hello World".to_string(),
         sks[1],
         pks.clone()[1],
@@ -94,8 +108,8 @@ pub fn bl() {
         lagrange_coeff_1,
     );
     let signon_2 = signOn::SignOn(
-        signoff.1.clone(),
-        signoff.0.clone(),
+        signoff_2.1.clone(),
+        sigagg.clone(),
         "Hello World".to_string(),
         sks[2],
         pks.clone()[2],
@@ -103,8 +117,8 @@ pub fn bl() {
         lagrange_coeff_2,
     );
     let signon_3 = signOn::SignOn(
-        signoff.1.clone(),
-        signoff.0.clone(),
+        signoff_3.1.clone(),
+        sigagg.clone(),
         "Hello World".to_string(),
         sks[3],
         pks.clone()[3],
@@ -112,8 +126,8 @@ pub fn bl() {
         lagrange_coeff_3,
     );
     let signon_4 = signOn::SignOn(
-        signoff.1.clone(),
-        signoff.0,
+        signoff_4.1.clone(),
+        sigagg.clone(),
         "Hello World".to_string(),
         sks[4],
         pks.clone()[4],
@@ -134,7 +148,9 @@ pub fn bl() {
         (state_prim, out_prim)
     }
 
-    let signature = sign(signon.0, signAgg2);
+    assert_eq!(signon.0, signon_1.0, "signon.0 != signon_1.0");
+
+    let signature = sign(signon_4.0, signAgg2);
     //println!("Signing:  \n  {:?}\n", signature);
     ////ver(m: String, pk_lambda: RistrettoPoint, signature: (RistrettoPoint, Scalar)) -> bool
     verification::ver("Hello World".to_string(), signon.2, signature);

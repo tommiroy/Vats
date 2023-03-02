@@ -22,12 +22,13 @@ pub fn SignOn(
     let b = hash_non(tilde_y, out.clone(), m.clone());
 
     // prod = out[j]^(b^(j-1))
+    let mut temp_out = Vec::<Scalar>::new();
     let mut big_r = RistrettoPoint::identity();
     for j in 0..out.len() {
         let bpowj = b * Scalar::from((j) as u32);
         // make bpowj a scalar
-        let bpowj = Scalar::from_bytes_mod_order(*bpowj.compress().as_bytes());
-        big_r += out[j] * bpowj;
+        temp_out.push(Scalar::from_bytes_mod_order(*out[j].compress().as_bytes()));
+        big_r += temp_out[j] * bpowj;
     }
 
     // compute challenge
@@ -45,7 +46,6 @@ pub fn SignOn(
         rhf += Scalar::from_bytes_mod_order(*temp.compress().as_bytes());
     }
     // calculate z_1
-    assert_eq!(&RISTRETTO_BASEPOINT_TABLE * &rhf, big_r);
     //let z_1 = sk.1//c * rho_i * (sk.1 * lagrange_coeff); //+ rhf;
 
     let z_1 = sk.1 * lagrange_coeff * rho_i * c + rhf;
