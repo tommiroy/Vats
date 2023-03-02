@@ -1,15 +1,30 @@
+
+#![allow(dead_code)]
+#![allow(unused_variables)]
 /*
 Main file is solely for testing.
 */
+use curve25519_dalek::scalar::Scalar;
 
 use dealer::bl;
+use header::{compute_lagrange_coeff};
 use tokio::time::{Duration, Instant};
 //mod networkinterface;
 //use core::num::dec2flt::parse;
 use std::{collections::HashMap, env, io::Write};
 mod dealer;
 //#[tokio::main]
+
+use crate::header::Signer;
+mod header;
+
+use crate::testground::test_ristretto;
+mod testground;
+
+
 fn main() {
+    
+    bl();
     //    // initialize logging
     //    env_logger::init();
     //    let args: Vec<String> = env::args().collect();
@@ -25,12 +40,19 @@ fn main() {
     //    // init the network will yield delivery channel from acast
     //    networkinterface::init(port, network.clone()).await;
 
-    bl();
+    // bl();
 
     //    // spawn a recieve channel on ba
     //    let rx = networkinterface::get_receive_channel("ba".to_string()).await;
     //    // acast a message on channel ba
     //    //networkinterface::cast("ba".to_string(), "Hello from ba".to_string()).await;
     //    // print the message received
-    //    //println!("Received: {}", rx.recv_async().await.unwrap());
+    //    //println!("Received: {}", rx.recv_async().await.unwrap());,
+
+    // test_to_scalar();
+    // let result:u32 =  1/(-1)*3/1*4/2;
+    // assert_eq!(compute_lagrange_coeff(&2, &vec!{1,2,3,4}), Scalar::from(result));
+
+    // test_ristretto();
+
 }
