@@ -13,3 +13,26 @@ pub fn muSigCoef(L: Vec<RistrettoPoint>, Y_i: RistrettoPoint) -> Scalar {
     bytes.copy_from_slice(hash.as_slice());
     Scalar::from_bytes_mod_order_wide(&bytes)
 }
+
+
+// Test for muSigCoef
+use rand::rngs::OsRng;
+
+pub fn test_muSigCoef () {
+    let mut rng: OsRng = OsRng;
+    let yi = RistrettoPoint::random(&mut rng);
+    let yother = RistrettoPoint::random(&mut rng);
+    let bigL = vec![RistrettoPoint::random(&mut rng), 
+                                        RistrettoPoint::random(&mut rng),
+                                        RistrettoPoint::random(&mut rng),
+                                        RistrettoPoint::random(&mut rng),
+                                        yi.clone()];
+
+    assert_eq!(muSigCoef(bigL.clone(), yi.clone()), muSigCoef(bigL.clone(), yi.clone()),
+                "muSigCoef generates different output from same inputs!");
+    
+    assert_ne!(muSigCoef(bigL.clone(), yother), muSigCoef(bigL.clone(), yi.clone()),
+            "muSigCoef generates same output from different inputs!");
+
+    println!("Finished testing MuSigCoef. All tests passed!");
+}
