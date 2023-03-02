@@ -4,6 +4,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
+use super::signOn;
 use rand::rngs::OsRng;
 
 // Generate a threshold Shamir secret sharing with Feldman VSS
@@ -37,7 +38,11 @@ pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, R
     // Generate the public keys G^si
     let mut pks = Vec::with_capacity(n);
     for i in 0..n {
-        pks.push(&RISTRETTO_BASEPOINT_TABLE * &shares[i].1);
+        pks.push(
+            &RISTRETTO_BASEPOINT_TABLE
+                * &shares.clone()[i].1
+                * signOn::compute_lagrange_coefficient(shares.clone(), ((i as u32) + 1)),
+        );
     }
 
     //Calculate the public key G^s

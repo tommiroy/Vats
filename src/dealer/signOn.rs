@@ -46,9 +46,9 @@ pub fn SignOn(
     }
     // calculate z_1
     assert_eq!(&RISTRETTO_BASEPOINT_TABLE * &rhf, big_r);
-    let z_1 = c * rho_i * (sk.1 * lagrange_coeff) + rhf;
+    //let z_1 = sk.1//c * rho_i * (sk.1 * lagrange_coeff); //+ rhf;
 
-    //let z_1 = sk.1 * lagrange_coeff;
+    let z_1 = sk.1 * lagrange_coeff * rho_i * c + rhf;
 
     (big_r, z_1, tilde_y)
 }

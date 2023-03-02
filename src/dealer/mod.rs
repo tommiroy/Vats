@@ -75,12 +75,6 @@ pub fn bl() {
     let lagrange_coeff_2 = signOn::compute_lagrange_coefficient(sks.clone(), 3);
     let lagrange_coeff_3 = signOn::compute_lagrange_coefficient(sks.clone(), 4);
     let lagrange_coeff_4 = signOn::compute_lagrange_coefficient(sks.clone(), 5);
-    println!("Lagrange coefficients for 1:  \n  {:?}\n", lagrange_coeff);
-    println!("Lagrange coefficients for 2:  \n  {:?}\n", lagrange_coeff_1);
-    println!("Lagrange coefficients for 3:  \n  {:?}\n", lagrange_coeff_2);
-    println!("Lagrange coefficients for 4:  \n  {:?}\n", lagrange_coeff_3);
-    println!("Lagrange coefficients for 5:  \n  {:?}\n", lagrange_coeff_4);
-    println!("shares \n  {:?}\n", sks);
     let signon = signOn::SignOn(
         signoff.1.clone(),
         signoff.0.clone(),
