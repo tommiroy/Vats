@@ -22,32 +22,29 @@ pub fn SignOn(
     let b = hash_non(tilde_y, out.clone(), m.clone());
 
     // prod = out[j]^(b^(j-1))
-    let mut temp_out = Vec::<Scalar>::new();
     let mut big_r = RistrettoPoint::identity();
-    for j in 0..out.len() {
-        let bpowj = b * Scalar::from((j) as u32);
+    for (j, _) in out.iter().enumerate() {
+        let bpowj = scalar_pow(b, j as u32);
         // make bpowj a scalar
-        temp_out.push(Scalar::from_bytes_mod_order(*out[j].compress().as_bytes()));
-        big_r += temp_out[j] * bpowj;
+
+        big_r += out[j] * bpowj;
     }
 
     // compute challenge
-    let c = hash_sig(tilde_y, big_r, m.clone());
+    let c = hash_sig(tilde_y, big_r, m);
 
     println!("HASHING SIGNATURE ON HASHON! {:?}", c);
     // make z_1
 
     let mut rhf = Scalar::zero();
-    for j in 0..out.len() {
-        let bpowj = b * Scalar::from((j) as u32);
+    for (j, _) in out.iter().enumerate() {
+        let bpowj = scalar_pow(b, j as u32);
         // make bpowj a scalar
         let temp = state1[j] * bpowj;
         // make rhf to Scaler
-        rhf += Scalar::from_bytes_mod_order(*temp.compress().as_bytes());
+        rhf += temp;
     }
     // calculate z_1
-    //let z_1 = sk.1//c * rho_i * (sk.1 * lagrange_coeff); //+ rhf;
-
     let z_1 = sk.1 * lagrange_coeff * rho_i * c + rhf;
 
     (big_r, z_1, tilde_y)
@@ -71,7 +68,7 @@ pub fn hash_sig(tilde_y: RistrettoPoint, r: RistrettoPoint, m: String) -> Scalar
     Scalar::from_bytes_mod_order_wide(&result_bytes)
 }
 
-pub fn hash_non(tilde_y: RistrettoPoint, out: Vec<RistrettoPoint>, m: String) -> RistrettoPoint {
+pub fn hash_non(tilde_y: RistrettoPoint, out: Vec<RistrettoPoint>, m: String) -> Scalar {
     let mut hasher = Sha512::new();
     // hash b_pre
     hasher.update(tilde_y.compress().as_bytes());
@@ -82,8 +79,7 @@ pub fn hash_non(tilde_y: RistrettoPoint, out: Vec<RistrettoPoint>, m: String) ->
     let result = hasher.finalize();
     let mut result_bytes = [0u8; 64];
     result_bytes.copy_from_slice(&result);
-    //Scalar::from_bytes_mod_order_wide(&result_bytes)
-    RistrettoPoint::from_uniform_bytes(&result_bytes)
+    Scalar::from_bytes_mod_order_wide(&result_bytes)
 }
 
 pub fn compute_lagrange_coefficient(shares: Vec<(u32, Scalar)>, x0: u32) -> Scalar {
@@ -96,4 +92,12 @@ pub fn compute_lagrange_coefficient(shares: Vec<(u32, Scalar)>, x0: u32) -> Scal
     }
 
     li
+}
+
+fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
+    let mut result = Scalar::one();
+    for _ in 0..exp {
+        result *= base;
+    }
+    result
 }
