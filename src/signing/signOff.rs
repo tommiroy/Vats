@@ -4,7 +4,7 @@ use curve25519_dalek::scalar::Scalar;
 
 use rand::rngs::OsRng;
 
-pub fn signOff(v: u32) -> (Vec<RistrettoPoint>, Vec<Scalar>) {
+pub fn sign_off(v: u32) -> (Vec<RistrettoPoint>, Vec<Scalar>) {
     let mut state1 = Vec::<Scalar>::new();
     let mut out1 = Vec::<RistrettoPoint>::new();
     for j in 0..v {

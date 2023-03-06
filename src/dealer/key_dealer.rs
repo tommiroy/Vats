@@ -16,7 +16,7 @@ pub fn dealer(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<(u32, RistrettoPoi
         a.push(Scalar::random(&mut rng));
     }
 
-    println!("Secret in keygen: {:?}", a[0]);
+    // println!("Secret in keygen: {:?}", a[0]);
 
     // Calculate the shares    // Dealer samples t random values t-1 a   ----> t = 3
     // Dealer samples t random values t-1 a   ----> t = 3
