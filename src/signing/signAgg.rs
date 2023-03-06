@@ -1,19 +1,16 @@
-use std::iter::Sum;
-
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
-use curve25519_dalek::traits::Identity;
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use curve25519_dalek::ristretto::RistrettoPoint;
 
 use super::signOff;
 
-pub fn signAgg(outs: Vec<Vec<RistrettoPoint>>, v: u32) -> Vec<RistrettoPoint> {
+// Aggregate signatures from multiple signers
+pub fn sign_agg(outs: Vec<Vec<RistrettoPoint>>, v: u32) -> Vec<RistrettoPoint> {
     let mut out_temp = Vec::with_capacity(v as usize);
     for i in 0..v {
-        let mut bigRs = Vec::<RistrettoPoint>::new();
+        let mut big_rs = Vec::<RistrettoPoint>::new();
         for j in 0..outs.len() {
-            bigRs.push(outs[j][i as usize]);
+            big_rs.push(outs[j][i as usize]);
         }
-        out_temp.push(bigRs);
+        out_temp.push(big_rs);
     }
 
     let mut out = Vec::with_capacity(v as usize);
@@ -43,7 +40,7 @@ pub fn test_signagg() {
 
     let outs = vec![out1, out2, out3, out4, out5];
 
-    let out = signAgg(outs, 2);
+    let out = sign_agg(outs, 2);
 
     println!("out1: {:?}", out[0]);
     println!("out2: {:?}", out[1]);

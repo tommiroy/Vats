@@ -1,4 +1,3 @@
-
 #![allow(dead_code)]
 #![allow(unused_variables)]
 /*
@@ -6,13 +5,14 @@ Main file is solely for testing.
 */
 use curve25519_dalek::scalar::Scalar;
 
-use dealer::bl;
-use header::{compute_lagrange_coeff};
+use header::compute_lagrange_coeff;
+use signing::bl;
 use tokio::time::{Duration, Instant};
+use vats::dealer;
 //mod networkinterface;
 //use core::num::dec2flt::parse;
 use std::{collections::HashMap, env, io::Write};
-mod dealer;
+mod signing;
 //#[tokio::main]
 
 use crate::header::Signer;
@@ -21,9 +21,7 @@ mod header;
 use crate::testground::test_ristretto;
 mod testground;
 
-
 fn main() {
-    
     bl();
     //    // initialize logging
     //    env_logger::init();
@@ -54,5 +52,4 @@ fn main() {
     // assert_eq!(compute_lagrange_coeff(&2, &vec!{1,2,3,4}), Scalar::from(result));
 
     // test_ristretto();
-
 }

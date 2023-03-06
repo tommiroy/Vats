@@ -3,8 +3,8 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
-use crate::dealer::keyAgg::keyAgg;
-use crate::dealer::muSigCoef::muSigCoef;
+use crate::signing::keyAgg::keyAgg;
+use crate::signing::muSigCoef::muSigCoef;
 use sha2::{Digest, Sha512};
 
 pub fn SignOn(
