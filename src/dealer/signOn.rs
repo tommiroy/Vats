@@ -15,9 +15,10 @@ pub fn SignOn(
     pk: RistrettoPoint,
     L: Vec<RistrettoPoint>,
     lagrange_coeff: Scalar,
+    participants: Vec<u32>,
 ) -> (RistrettoPoint, Scalar, RistrettoPoint) {
     let rho_i = muSigCoef(L.clone(), pk);
-    let tilde_y = keyAgg(L);
+    let tilde_y = keyAgg(L, participants);
     // hash b_pre with sha512
     let b = hash_non(tilde_y, out.clone(), m.clone());
 
@@ -80,18 +81,6 @@ pub fn hash_non(tilde_y: RistrettoPoint, out: Vec<RistrettoPoint>, m: String) ->
     let mut result_bytes = [0u8; 64];
     result_bytes.copy_from_slice(&result);
     Scalar::from_bytes_mod_order_wide(&result_bytes)
-}
-
-pub fn compute_lagrange_coefficient(shares: Vec<(u32, Scalar)>, x0: u32) -> Scalar {
-    let mut li = Scalar::one();
-    for (x1, _) in shares.iter() {
-        if *x1 != x0 {
-            let lui = Scalar::from(*x1) * (Scalar::from(*x1) - Scalar::from(x0)).invert();
-            li *= lui;
-        }
-    }
-
-    li
 }
 
 fn scalar_pow(base: Scalar, exp: u32) -> Scalar {

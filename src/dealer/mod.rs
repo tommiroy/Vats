@@ -33,7 +33,7 @@ pub fn bl() {
     let participants = vec![1, 2, 3, 4, 5];
 
     // pick random elements from a Vec<(u32, Scalar)>
-    for i in 0..1000 {
+    for i in 0..1 {
         fn pick_random_elements<T: Clone>(list: Vec<T>, n: usize) -> Vec<T> {
             let mut rng = thread_rng();
             let mut list = list;
@@ -54,7 +54,7 @@ pub fn bl() {
         //
         let _hash2 = muSigCoef::muSigCoef(pks.clone(), pks[1]);
         //
-        let _keyagg = keyAgg::keyAgg(pks.clone());
+        //let _keyagg = keyAgg::keyAgg(pks.clone());
         //
         let mut sigagg_list = Vec::<(Vec<RistrettoPoint>)>::new();
 
@@ -73,11 +73,11 @@ pub fn bl() {
         //
         let sigagg = signAgg::signAgg(sigagg_list.clone(), v);
         //
-        let lagrange_coeff = signOn::compute_lagrange_coefficient(sks.clone(), 1);
-        let lagrange_coeff_1 = signOn::compute_lagrange_coefficient(sks.clone(), 2);
-        let lagrange_coeff_2 = signOn::compute_lagrange_coefficient(sks.clone(), 3);
-        let lagrange_coeff_3 = signOn::compute_lagrange_coefficient(sks.clone(), 4);
-        let lagrange_coeff_4 = signOn::compute_lagrange_coefficient(sks.clone(), 5);
+        let lagrange_coeff = keyAgg::compute_lagrange_coefficient(participants.clone(), 1);
+        let lagrange_coeff_1 = keyAgg::compute_lagrange_coefficient(participants.clone(), 2);
+        let lagrange_coeff_2 = keyAgg::compute_lagrange_coefficient(participants.clone(), 3);
+        let lagrange_coeff_3 = keyAgg::compute_lagrange_coefficient(participants.clone(), 4);
+        let lagrange_coeff_4 = keyAgg::compute_lagrange_coefficient(participants.clone(), 5);
 
         let signon = signOn::SignOn(
             signoff.1.clone(),
@@ -87,6 +87,7 @@ pub fn bl() {
             pks.clone()[0],
             pks.clone(),
             lagrange_coeff,
+            participants.clone(),
         );
         let signon_1 = signOn::SignOn(
             signoff_1.1.clone(),
@@ -96,6 +97,7 @@ pub fn bl() {
             pks.clone()[1],
             pks.clone(),
             lagrange_coeff_1,
+            participants.clone(),
         );
         let signon_2 = signOn::SignOn(
             signoff_2.1.clone(),
@@ -105,6 +107,7 @@ pub fn bl() {
             pks.clone()[2],
             pks.clone(),
             lagrange_coeff_2,
+            participants.clone(),
         );
         let signon_3 = signOn::SignOn(
             signoff_3.1.clone(),
@@ -114,6 +117,7 @@ pub fn bl() {
             pks.clone()[3],
             pks.clone(),
             lagrange_coeff_3,
+            participants.clone(),
         );
         let signon_4 = signOn::SignOn(
             signoff_4.1.clone(),
@@ -123,7 +127,12 @@ pub fn bl() {
             pks.clone()[4],
             pks.clone(),
             lagrange_coeff_4,
+            participants.clone(),
         );
+
+        //check if all same tilde_y
+        assert_eq!(signon.2, signon_1.2, "signon.1 != signon_1.1");
+
         let mut z_list = Vec::with_capacity(n);
         z_list.push(signon.1);
         z_list.push(signon_1.1);
