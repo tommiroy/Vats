@@ -6,6 +6,8 @@ use super::header::*;
 
 pub fn ver(m: String, tilde_y: RistrettoPoint, signature: (RistrettoPoint, Scalar)) -> bool {
     let c = hash_sig(tilde_y, signature.0, m);
+    // println!("c in verfication: {:?}", c);
+
     let rhs = tilde_y * c + signature.0;
     let lhs = &RISTRETTO_BASEPOINT_TABLE * &signature.1;
     if lhs == rhs {

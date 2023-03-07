@@ -48,6 +48,10 @@ impl Committee {
             public_key: RistrettoPoint::default(),
         }
     }
+
+    pub fn set_public_key(&mut self, key:RistrettoPoint) {
+        self.public_key = key;
+    }
 }
 
 // Participant struct to hold possible signers of the message

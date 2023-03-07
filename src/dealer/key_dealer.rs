@@ -7,7 +7,7 @@ use curve25519_dalek::traits::Identity;
 use rand::rngs::OsRng;
 
 // Generate a threshold Shamir secret sharing with Feldman VSS
-pub fn dealer(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<(u32, RistrettoPoint)>) {
+pub fn dealer(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<(u32, RistrettoPoint)>, RistrettoPoint, Scalar) {
     let mut rng: OsRng = OsRng;
 
     // Dealer samples t random values t-1 a   ----> t = 3
@@ -67,5 +67,6 @@ pub fn dealer(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<(u32, RistrettoPoi
     }
     assert!(valid, "Shares are not valid");
 
-    (shares, pks)
+    let pk = &RISTRETTO_BASEPOINT_TABLE * &a[0];
+    (shares, pks, pk, a[0])
 }

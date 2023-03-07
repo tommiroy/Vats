@@ -6,7 +6,6 @@ use super::header::*;
 
 use crate::signing::keyAgg::key_agg;
 use crate::signing::muSigCoef::musig_coef;
-use sha2::{Digest, Sha512};
 
 pub fn sign_on(
     signer: Signer,
@@ -31,7 +30,11 @@ pub fn sign_on(
     }
 
     // compute challenge
-    let c = hash_sig(tilde_y, big_r, m);
+    // let c = hash_sig(tilde_y, big_r, m);
+    let c = hash_sig(signers.public_key, big_r, m);
+    // println!("c in signon: {:?}", c);
+
+
 
     // println!("HASHING SIGNATURE ON HASHON! {:?}", c);
     // make z_1
@@ -45,9 +48,10 @@ pub fn sign_on(
         rhf += temp;
     }
     // calculate z_1
-    let lagrange_coeff = compute_lagrange_coefficient(signers.clone(), signer.id);
+    let lagrange_coeff = compute_lagrange_coefficient(signers, signer.id);
 
-    let z_1 = signer.private_key.get_key() * lagrange_coeff * rho_i * c + rhf;
+    let z_1 = signer.private_key.get_key() * lagrange_coeff * rho_i * c + rhf*rho_i;
+    // println!("rho_i from {}: \n {:?}", signer.id, rho_i);
 
     (big_r, z_1)
 }
