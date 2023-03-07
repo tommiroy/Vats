@@ -5,6 +5,7 @@ use rand::prelude::*;
 
 use vats::dealer;
 mod keyAgg;
+mod keyUpd;
 mod muSigCoef;
 mod signAgg;
 mod signAgg2;

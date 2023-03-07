@@ -49,7 +49,7 @@ impl Committee {
         }
     }
 
-    pub fn set_public_key(&mut self, key:RistrettoPoint) {
+    pub fn set_public_key(&mut self, key: RistrettoPoint) {
         self.public_key = key;
     }
 }
@@ -131,6 +131,27 @@ pub fn hash_non(com: Committee, outs: Vec<RistrettoPoint>, m: String) -> Scalar 
     Scalar::from_bytes_mod_order_wide(&result_bytes)
 }
 
+// #################### Hash Key ###########################
+
+pub fn hash_key(i: u32, m: String, ga: RistrettoPoint, big_r: RistrettoPoint) -> Scalar {
+    let mut hasher = Sha512::new();
+    // hash $b:= H_{non}(\widetilde{Y},(R_1,...,R_v),m)$
+
+    hasher.update(com.public_key.compress().as_bytes());
+
+    hasher.update(m.as_bytes());
+
+    hasher.update(ga.compress().as_bytes());
+
+    hasher.update(big_r.compress().as_bytes());
+
+    // convert the hash to a scalar to get the correct calulations
+    let result = hasher.finalize();
+    let mut result_bytes = [0u8; 64];
+    result_bytes.copy_from_slice(&result);
+
+    Scalar::from_bytes_mod_order_wide(&result_bytes)
+}
 // #################### Helper functions ###########################
 
 // Compute larange coefficient
