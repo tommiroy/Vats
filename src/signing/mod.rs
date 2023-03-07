@@ -47,6 +47,9 @@ pub fn bl() {
 
     committee = random_committee(committee, t);
 
+    // for testing purposes of threshold
+    //committee = random_committee(committee, t-1);
+
     //print what ids that are in the committee
     for signer in committee.clone().signers {
         println!("Signer id: {}", signer.id);
