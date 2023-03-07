@@ -1,5 +1,5 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
-use curve25519_dalek::ristretto::{RistrettoPoint, RistrettoBasepointTable};
+use curve25519_dalek::ristretto::{RistrettoBasepointTable, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use rand::prelude::*;
 
@@ -17,7 +17,7 @@ use crate::signing::header::*;
 
 pub fn bl() {
     // Example usage
-    let t = 4; // threshold
+    let t = 3; // threshold
     let n = 5; // number of participants.clone()
     let v = 2; // number of nonce
     let (sks, pks, pk, sk) = dealer::keygen(t, n);
@@ -37,8 +37,22 @@ pub fn bl() {
         participants[4].clone(),
         participants[0].clone(),
     ]);
-    committee.set_public_key(pk);
 
+    pub fn random_committee(committee: Committee, t: usize) -> Committee {
+        let mut rng = rand::thread_rng();
+        let mut shuffled = committee.signers.clone();
+        shuffled.shuffle(&mut rng);
+        Committee::new(shuffled.into_iter().take(t).collect())
+    }
+
+    committee = random_committee(committee, t);
+
+    //print what ids that are in the committee
+    for signer in committee.clone().signers {
+        println!("Signer id: {}", signer.id);
+    }
+
+    committee.set_public_key(pk);
 
     let mut outs = Vec::with_capacity(n);
     let mut states = Vec::with_capacity(n);
@@ -77,16 +91,14 @@ pub fn bl() {
 
     let mut sk_prim = Scalar::zero();
     for signer in committee.clone().signers {
-        sk_prim += signer.private_key.get_key()*compute_lagrange_coefficient(committee.clone(), signer.id);
+        sk_prim += signer.private_key.get_key()
+            * compute_lagrange_coefficient(committee.clone(), signer.id);
     }
 
     // Secret key is correct!
     // assert_eq!(sk_prim, sk, "Reconstructed secret key and secret key is not equal in mod");
     // Check if reconstructed secret key is equal public key
     // assert_eq!(pk, &RISTRETTO_BASEPOINT_TABLE*&sk_prim, "Public key is not equal secret key");
-
-
-
 
     verification::ver(
         "Super mega error message".to_string(),
