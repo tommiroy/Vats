@@ -27,7 +27,9 @@ pub fn key_agg(committee: Committee) -> Result<RistrettoPoint, &'static str> {
         if lagrange_coefficient == Scalar::zero() {
             return Err("The Lagrange coefficient cannot be zero");
         }
-        tilde_y += x.public_key.key * rho[i] * lagrange_coefficient;
+        // tilde_y += x.public_key.key * rho[i] * lagrange_coefficient;
+        tilde_y += x.public_key.key * rho[i]
+
     }
     Ok(tilde_y)
 }

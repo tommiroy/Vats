@@ -50,7 +50,7 @@ pub fn sign_on(
     // calculate z_1
     let lagrange_coeff = compute_lagrange_coefficient(signers, signer.id);
 
-    let z_1 = signer.private_key.get_key() * lagrange_coeff * rho_i * c + rhf*rho_i;
+    let z_1 = rho_i * (signer.private_key.get_key() * lagrange_coeff * c + rhf + signer.private_key.get_key());
     // println!("rho_i from {}: \n {:?}", signer.id, rho_i);
 
     (big_r, z_1)
