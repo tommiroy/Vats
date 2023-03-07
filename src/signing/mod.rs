@@ -17,7 +17,7 @@ use crate::signing::header::*;
 
 pub fn bl() {
     // Example usage
-    let t = 3; // threshold
+    let t = 4; // threshold
     let n = 5; // number of participants.clone()
     let v = 2; // number of nonce
     let (sks, pks, pk, sk) = dealer::keygen(t, n);
@@ -35,6 +35,7 @@ pub fn bl() {
         participants[2].clone(),
         participants[3].clone(),
         participants[4].clone(),
+        participants[0].clone(),
     ]);
     committee.set_public_key(pk);
 
