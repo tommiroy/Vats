@@ -9,7 +9,9 @@ use rand::rngs::OsRng;
 
 use super::header::*;
 
-pub fn key_upd(
+use vats::networkinterface;
+
+pub async fn key_upd(
     t: usize,
     n: usize,
     Signer: &mut Signer,
@@ -69,8 +71,27 @@ pub fn key_upd(
         for i in 1..t {
             commitments.push(mini_sigma[i]);
         }
+        let rx = networkinterface::get_receive_channel("key_upd".to_string()).await;
+
+        let sigma_i = (big_r_i, mu_i);
+
+        //------------------------------------Broadcast --------------------------------------
+
+        let sigma_i_string = (point_to_string(sigma_i.0), scalar_to_string(&sigma_i.1));
+        let mut commitments_string = Vec::with_capacity(t);
+        for i in commitments {
+            commitments_string.push(point_to_string(i));
+        }
+
+        // make sigma_i_string and commitments_string a string
+        let sigma_i_string = serde_json::to_string(&sigma_i_string).unwrap();
+        // make commitments_string a string
+        let commitments_string = serde_json::to_string(&commitments_string).unwrap();
 
         //BROADCAST commitments, sigma = (big_r_i, mu_i);
+
+        networkinterface::cast(("key_upd").to_string(), sigma_i_string).await;
+        networkinterface::cast(("key_upd").to_string(), commitments_string).await;
 
         //Upon receiving all commitments, verify sigma_l = (big_r_l, mu_l). 1<=l<=n l/=i
         //Verify that c_l = H(l,Context,g^a_{l0}, R_l)

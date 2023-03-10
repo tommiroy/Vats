@@ -21,6 +21,7 @@ rand = "0.7"
 sha2 = "0.10.6"
 zeroize = "1.5.7"
 pbr = "1.0.4"
+base64 = "0.21"
 
 
 [dependencies.uuid]

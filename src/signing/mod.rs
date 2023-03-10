@@ -5,11 +5,13 @@ use rand::prelude::*;
 
 use vats::dealer;
 mod keyAgg;
+mod keyUpd;
 mod muSigCoef;
 mod signAgg;
 mod signAgg2;
 mod signOff;
 mod signOn;
+mod util;
 mod verification;
 
 mod header;
@@ -96,6 +98,7 @@ pub fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Check if reconstructed secret key is equal public key
     // assert_eq!(pk, &RISTRETTO_BASEPOINT_TABLE*&sk_prim, "Public key is not equal secret key");
 
+    KeyUpd::new(committee, sk_prim, pk);
     verification::ver(
         "Super mega error message".to_string(),
         pk,
