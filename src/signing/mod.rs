@@ -41,12 +41,12 @@ pub fn bl() {
 
     pub fn random_committee(committee: Committee, t: usize) -> Committee {
         let mut rng = rand::thread_rng();
-        let mut shuffled = committee.signers.clone();
+        let mut shuffled = committee.signers;
         shuffled.shuffle(&mut rng);
         Committee::new(shuffled.into_iter().take(t).collect())
     }
 
-    committee = random_committee(committee, t);
+    committee = random_committee(committee, 5);
 
     // for testing purposes of threshold
     //committee = random_committee(committee, t-1);
@@ -108,5 +108,6 @@ pub fn bl() {
         "Super mega error message".to_string(),
         pk,
         (big_rs[0], sign_agg2),
+        committee.clone(),
     );
 }
