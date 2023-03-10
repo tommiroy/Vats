@@ -27,5 +27,8 @@ pub fn key_update(si: Scalar, t: u32 , nonce: Scalar, committee: Committee) {
     // Create whatever. Committment?
     let k = Scalar::random(&mut rng);
     let big_r = &RISTRETTO_BASEPOINT_TABLE * &k;
+    let c = "HASH";
+    
+
 
 }

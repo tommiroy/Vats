@@ -11,7 +11,9 @@ pub fn ver(m: String, big_y: RistrettoPoint, signature: (RistrettoPoint, Scalar)
 
     let tilde_y = key_agg(committee).unwrap();
 
-    let rhs = (tilde_y + big_y)* c + signature.0;
+    // let rhs = (tilde_y + big_y)* c + signature.0;
+    let rhs = (big_y)* c + signature.0;
+
     let lhs = &RISTRETTO_BASEPOINT_TABLE * &signature.1;
     if lhs == rhs {
         println!("#####################################\nSignature Verification Succeded \n#####################################");

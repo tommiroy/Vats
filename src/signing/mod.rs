@@ -10,13 +10,13 @@ mod signOff;
 mod signOn;
 mod verification;
 mod key_update;
-mod header;
+pub mod header;
 use crate::signing::header::*;
 
-pub fn bl() {
+pub fn bl() -> bool {
     // Example usage
-    let t = 9; // threshold
-    let n = 12; // number of participants.clone()
+    let t = 10; // threshold
+    let n = 100; // number of participants.clone()
     let v = 5; // number of nonce
     let (sks, pks, pk, sk) = dealer::keygen(t, n);
 
@@ -39,8 +39,7 @@ pub fn bl() {
 
     committee = random_committee(committee, t);
 
-    // for testing purposes of threshold
-    //committee = random_committee(committee, t-1);
+
 
     //print what ids that are in the committee
     for signer in committee.clone().signers {
@@ -82,13 +81,15 @@ pub fn bl() {
         big_ys.push(signer.public_key.key);
     }
 
-    let sign_agg2 = signAgg2::signAgg2(zs.clone(), tilde_y, big_ys, committee.clone());
+    let sign_agg2 = signAgg2::signAgg2(zs.clone(), committee.clone());
 
     let mut sk_prim = Scalar::zero();
     for signer in committee.clone().signers {
         sk_prim += signer.private_key.get_key()
             * compute_lagrange_coefficient(committee.clone(), signer.id);
     }
+
+    assert_eq!(sk, sk_prim, "Key reconstruction is wrong");
 
     // Secret key is correct!
     // assert_eq!(sk_prim, sk, "Reconstructed secret key and secret key is not equal in mod");
@@ -100,5 +101,5 @@ pub fn bl() {
         pk,
         (big_rs[0], sign_agg2),
         committee.clone(),
-    );
+    )
 }
