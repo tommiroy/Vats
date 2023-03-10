@@ -4,11 +4,10 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
-use super::signOn;
 use rand::rngs::OsRng;
 
 // Generate a threshold Shamir secret sharing with Feldman VSS
-pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, RistrettoPoint) {
+pub fn dealer(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<(u32, RistrettoPoint)>, RistrettoPoint, Scalar) {
     let mut rng: OsRng = OsRng;
 
     // Dealer samples t random values t-1 a   ----> t = 3
@@ -17,9 +16,11 @@ pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, R
         a.push(Scalar::random(&mut rng));
     }
 
-    println!("Secret in keygen: {:?}", a[0]);
+    // println!("Secret in keygen: {:?}", a[0]);
 
-    // Calculate the shares
+    // Calculate the shares    // Dealer samples t random values t-1 a   ----> t = 3
+    // Dealer samples t random values t-1 a   ----> t = 3
+
     let mut shares = Vec::with_capacity(t);
     for i in 0..n {
         let mut share = Scalar::zero();
@@ -38,7 +39,10 @@ pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, R
     // Generate the public keys G^si
     let mut pks = Vec::with_capacity(n);
     for i in 0..n {
-        pks.push(&RISTRETTO_BASEPOINT_TABLE * &shares.clone()[i].1);
+        pks.push((
+            (i + 1) as u32,
+            &RISTRETTO_BASEPOINT_TABLE * &shares.clone()[i].1,
+        ));
     }
 
     //Calculate the public key G^s
@@ -47,8 +51,6 @@ pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, R
     //    sk += &shares[i].1;
     //}
     //let pk = &RISTRETTO_BASEPOINT_TABLE * &sk;
-
-    let pk = &RISTRETTO_BASEPOINT_TABLE * &a[0];
 
     // Verify the shares with Feldmans VSS
     let mut valid = true;
@@ -65,22 +67,6 @@ pub fn keygen(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<RistrettoPoint>, R
     }
     assert!(valid, "Shares are not valid");
 
-    (shares, pks, pk)
-}
-
-// Reconstruct the secret key from the shares using Lagrange interpolation
-pub fn reconstruct_secret_key(shares: Vec<(u32, Scalar)>, pk: RistrettoPoint) -> Scalar {
-    let mut y = Scalar::zero();
-    for (x0, y0) in shares.iter() {
-        let mut li = Scalar::one();
-        for (x1, _) in shares.iter() {
-            if x1 != x0 {
-                let lui = Scalar::from(*x1) * (Scalar::from(*x1) - Scalar::from(*x0)).invert();
-                li *= lui;
-            }
-        }
-        y += li * y0;
-    }
-    assert_eq!(&RISTRETTO_BASEPOINT_TABLE * &y, pk);
-    y
+    let pk = &RISTRETTO_BASEPOINT_TABLE * &a[0];
+    (shares, pks, pk, a[0])
 }

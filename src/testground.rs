@@ -10,29 +10,8 @@ use rand::rngs::OsRng;
 pub fn test_ristretto() {
 
     let mut rng: OsRng = OsRng;
-    let ris = RistrettoPoint::random(&mut rng);
+    let ris1 = RistrettoPoint::random(&mut rng);
+    let ris2 = RistrettoPoint::random(&mut rng);
 
-    // assert_eq!(ris*Scalar::from(4 as u32), ris*Scalar::from(1 as u32)+ris*Scalar::from(3 as u32));
-
-    let a = Scalar::from_bytes_mod_order(*ris.compress().as_bytes());
-
-
-    if let Some(b) = CompressedRistretto::decompress(&CompressedRistretto::from_slice(a.as_bytes())) {
-        // println!("Success!");
-        // assert_eq!(b*Scalar::from(3 as u32), ris);
-        let b_scalar = Scalar::from_bytes_mod_order(*b.compress().as_bytes());
-        // assert_eq!(b_scalar, a);
-        
-        let risoo = &RISTRETTO_BASEPOINT_TABLE * &a;
-        let risooo = &RISTRETTO_BASEPOINT_POINT * &b_scalar;
-
-        if (risoo == risooo) {
-            println!("Equal!!!!!");
-        } else {
-            print!("Not Equal!!!");
-        }
-        // assert_eq!(risoo, risooo);
-
-    }  
-
+    let ris3 = ris1 + ris2;
 }
