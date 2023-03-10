@@ -1,5 +1,3 @@
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
-use curve25519_dalek::ristretto::{RistrettoBasepointTable, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use rand::prelude::*;
 
@@ -11,15 +9,15 @@ mod signAgg2;
 mod signOff;
 mod signOn;
 mod verification;
-
+mod key_update;
 mod header;
 use crate::signing::header::*;
 
 pub fn bl() {
     // Example usage
-    let t = 3; // threshold
-    let n = 5; // number of participants.clone()
-    let v = 2; // number of nonce
+    let t = 9; // threshold
+    let n = 12; // number of participants.clone()
+    let v = 5; // number of nonce
     let (sks, pks, pk, sk) = dealer::keygen(t, n);
 
     // Make a list of all participants and give them the right share
@@ -29,14 +27,8 @@ pub fn bl() {
         let prikey = PrivateKey::new(sk.0, sk.1);
         participants.push(Signer::new(sk.0, prikey, pubkey));
     }
-    // List of all signers (a partition of participan)
-    let mut committee = Committee::new(vec![
-        participants[1].clone(),
-        participants[2].clone(),
-        participants[3].clone(),
-        participants[4].clone(),
-        participants[0].clone(),
-    ]);
+
+    let mut committee = Committee::new(participants);
 
     pub fn random_committee(committee: Committee, t: usize) -> Committee {
         let mut rng = rand::thread_rng();
@@ -45,7 +37,7 @@ pub fn bl() {
         Committee::new(shuffled.into_iter().take(t).collect())
     }
 
-    committee = random_committee(committee, 5);
+    committee = random_committee(committee, t);
 
     // for testing purposes of threshold
     //committee = random_committee(committee, t-1);

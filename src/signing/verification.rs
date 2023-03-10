@@ -14,13 +14,14 @@ pub fn ver(m: String, big_y: RistrettoPoint, signature: (RistrettoPoint, Scalar)
     let rhs = (tilde_y + big_y)* c + signature.0;
     let lhs = &RISTRETTO_BASEPOINT_TABLE * &signature.1;
     if lhs == rhs {
-        println!("\nSignature Verified : Success");
+        println!("#####################################\nSignature Verification Succeded \n#####################################");
         true
     } else {
-        println!(
-            "Signature Verification Failed: \n SHOULD BE :::::::::::: {:?} \n GOT :::::::::: {:?} \n",
-            rhs, lhs
-        );
+        println!("#####################################\nSignature Verification Failed \n#####################################");
+        // println!(
+        //     "Signature Verification Failed: \n SHOULD BE :::::::::::: {:?} \n GOT :::::::::: {:?} \n",
+        //     rhs, lhs
+        // );
         false
     }
 }
