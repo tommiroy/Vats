@@ -26,16 +26,23 @@ pub fn dealer(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<(u32, RistrettoPoi
     for i in 1..n+1 {
         let mut share = Scalar::zero();
         for j in 0..a.len() {
-            share += a[j] * scalar_pow(Scalar::from(i as u8), j as u32);
+            share += a[j] * scalar_pow(Scalar::from(i as u32), j as u32);
         }
         shares.push((i as u32, share));
     }
 
+
+
     // Generate the commitments which will be broadcasted 0<=j<=t
     let mut B = Vec::with_capacity(n);
-    for j in 0..t {
-        B.push(&RISTRETTO_BASEPOINT_TABLE * &a[j]);
+    for ai in a.clone() {
+        B.push(&RISTRETTO_BASEPOINT_TABLE * &ai);
     }
+
+
+    // for j in 0..t {
+    //     B.push(&RISTRETTO_BASEPOINT_TABLE * &a[j]);
+    // }
 
     // Generate the public keys G^si
     let mut pks = Vec::with_capacity(n);
@@ -55,12 +62,14 @@ pub fn dealer(t: usize, n: usize) -> (Vec<(u32, Scalar)>, Vec<(u32, RistrettoPoi
 
     // Verify the shares with Feldmans VSS
     let mut valid = true;
-    for i in 1..n+1 {
+    for i in 0..n {
         let lhs = &RISTRETTO_BASEPOINT_TABLE * &shares[i].1;
         let mut rhs = RistrettoPoint::identity();
         for j in 0..t {
             // rhs += B[j] * scalar_pow(Scalar::from(i as u8), j as u32);
-            rhs += B[j] * Scalar::from(i as u8) * Scalar::from(j as u128);
+            // rhs += B[j] * Scalar::from(i as u32 +1) * Scalar::from(j as u128);
+            rhs += B[j] * scalar_pow(Scalar::from(i as u32 +1), j as u32);
+
 
         }
         if lhs != rhs {
