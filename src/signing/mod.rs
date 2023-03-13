@@ -3,21 +3,20 @@ use rand::prelude::*;
 
 use vats::dealer;
 mod keyAgg;
+mod keyUpd;
 mod muSigCoef;
 mod signAgg;
 mod signAgg2;
 mod signOff;
 mod signOn;
+mod util;
 mod verification;
 mod key_update;
 pub mod header;
 use crate::signing::header::*;
 
-pub fn bl() -> bool {
+pub fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Example usage
-    let t = 100; // threshold
-    let n = 500; // number of participants.clone()
-    let v = 5; // number of nonce
     let (sks, pks, pk, sk) = dealer::keygen(t, n);
 
     // Make a list of all participants and give them the right share
@@ -27,9 +26,8 @@ pub fn bl() -> bool {
         let prikey = PrivateKey::new(sk.0, sk.1);
         participants.push(Signer::new(sk.0, prikey, pubkey));
     }
-
+    // List of all signers (a partition of participan)
     let mut committee = Committee::new(participants);
-
     pub fn random_committee(committee: Committee, t: usize) -> Committee {
         let mut rng = rand::thread_rng();
         let mut shuffled = committee.signers;
@@ -92,10 +90,14 @@ pub fn bl() -> bool {
     assert_eq!(sk, sk_prim, "Key reconstruction is wrong");
 
     // Secret key is correct!
-    // assert_eq!(sk_prim, sk, "Reconstructed secret key and secret key is not equal in mod");
+    assert_eq!(
+        sk_prim, sk,
+        "Reconstructed secret key and secret key is not equal in mod"
+    );
     // Check if reconstructed secret key is equal public key
     // assert_eq!(pk, &RISTRETTO_BASEPOINT_TABLE*&sk_prim, "Public key is not equal secret key");
 
+    KeyUpd::new(committee, sk_prim, pk);
     verification::ver(
         "Super mega error message".to_string(),
         pk,
