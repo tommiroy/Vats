@@ -3,7 +3,7 @@ use rand::prelude::*;
 
 use vats::dealer;
 mod keyAgg;
-//mod keyUpd;
+mod keyUpd;
 mod muSigCoef;
 mod signAgg;
 mod signAgg2;
@@ -14,7 +14,8 @@ pub mod header;
 mod verification;
 use crate::signing::header::*;
 
-pub fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
+
+pub async fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Example usage
     let (sks, pks, pk, sk) = dealer::keygen(t, n);
 
@@ -94,7 +95,7 @@ pub fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Check if reconstructed secret key is equal public key
     // assert_eq!(pk, &RISTRETTO_BASEPOINT_TABLE*&sk_prim, "Public key is not equal secret key");
 
-    //KeyUpd::new(committee, sk_prim, pk);
+    keyUpd::key_upd(t , n, committee.signers[0].clone(), "hello").await;
     verification::ver(
         "Super mega error message".to_string(),
         pk,

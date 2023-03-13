@@ -3,27 +3,24 @@
 /*
 Main file is solely for testing.
 */
-use curve25519_dalek::scalar::Scalar;
 
 // use header::compute_lagrange_coeff;
 use signing::thresholdsignature;
 use std::env;
 use tokio::time::{Duration, Instant};
 use vats::dealer;
-//mod networkinterface;
+mod networkinterface;
 //use core::num::dec2flt::parse;
 mod signing;
-//#[tokio::main]
 
 use pbr::ProgressBar;
 
-use crate::testground::test_ristretto;
 mod testground;
 
 mod test_signing;
-use crate::test_signing::*;
 
-fn main() {
+#[tokio::main]
+async fn main(){
     // test_signing();
     // take arg
     let args: Vec<String> = env::args().collect();
@@ -42,10 +39,11 @@ fn main() {
     let mut bar = ProgressBar::new(times as u64);
     bar.format("╢▌▌░╟");
 
-    let mut progress = 0u32;
+    
+    let  progress = 0u32;
     for i in 0..times {
         bar.inc();
-        if thresholdsignature(t, n + 1, 2) {
+        if thresholdsignature(t, n + 1, 2).await {
             // println!("Signature verified");
         } else {
             failed += 1;
