@@ -7,6 +7,7 @@ use curve25519_dalek::scalar::Scalar;
 
 // use header::compute_lagrange_coeff;
 use signing::thresholdsignature;
+use std::env;
 use tokio::time::{Duration, Instant};
 use vats::dealer;
 //mod networkinterface;

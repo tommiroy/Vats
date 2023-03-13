@@ -3,16 +3,15 @@ use rand::prelude::*;
 
 use vats::dealer;
 mod keyAgg;
-mod keyUpd;
+//mod keyUpd;
 mod muSigCoef;
 mod signAgg;
 mod signAgg2;
 mod signOff;
 mod signOn;
-mod util;
-mod verification;
-mod key_update;
+//mod util;
 pub mod header;
+mod verification;
 use crate::signing::header::*;
 
 pub fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
@@ -36,8 +35,6 @@ pub fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     }
 
     committee = random_committee(committee, t);
-
-
 
     //print what ids that are in the committee
     // for signer in committee.clone().signers {
@@ -97,7 +94,7 @@ pub fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Check if reconstructed secret key is equal public key
     // assert_eq!(pk, &RISTRETTO_BASEPOINT_TABLE*&sk_prim, "Public key is not equal secret key");
 
-    KeyUpd::new(committee, sk_prim, pk);
+    //KeyUpd::new(committee, sk_prim, pk);
     verification::ver(
         "Super mega error message".to_string(),
         pk,
