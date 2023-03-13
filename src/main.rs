@@ -31,6 +31,13 @@ fn main() {
     let n = args[2].parse::<usize>().unwrap();
     let t = args[3].parse::<usize>().unwrap();
 
+    if n < t || n < 1 || t < 1 {
+        panic!("n must be greater than t, and both must be greater than 0");
+    }
+    if times < 1 {
+        panic!("times must be greater than 0");
+    }
+
     let mut failed = 0;
     let mut bar = ProgressBar::new(times as u64);
     bar.format("╢▌▌░╟");
