@@ -28,8 +28,8 @@ fn main() {
     // take arg
     let args: Vec<String> = env::args().collect();
     let times = args[1].parse::<usize>().unwrap();
-    let n = args[2].parse::<usize>().unwrap();
-    let t = args[3].parse::<usize>().unwrap();
+    let t = args[2].parse::<usize>().unwrap();
+    let n = args[3].parse::<usize>().unwrap();
 
     if n < t || n < 1 || t < 1 {
         panic!("n must be greater than t, and both must be greater than 0");
