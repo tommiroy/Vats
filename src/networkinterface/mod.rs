@@ -1,59 +1,166 @@
-use flume::{unbounded, Receiver, Sender};
-use log::{debug, warn};
-
-mod acast;
-pub mod server;
-
-/// initalizes acast and listening server. Must be called first!
-pub async fn init(port: u16, network: Vec<String>) {
-    debug!("Initializing networking interface");
-    let (tx_to_server, rx_to_acast_server): (Sender<String>, Receiver<String>) = unbounded();
-
-    let _ = std::thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        rt.block_on(server::server(port))
-    });
-
-    acast::init(rx_to_acast_server, network).await;
-
-    server::add_to_pubsub(acast::get_id(), tx_to_server)
-        .await
-        .ok();
+/// ###################################################################
+/// Argument options
+/// Dont care about these
+/// ###################################################################
+use clap::{Args, Parser, Subcommand};
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct App {
+    /// Name of the person to greet
+    #[command(subcommand)]
+    mode: Mode,
 }
 
-/// Cast onto the network. note that [init] must be called first!
-/// Tag is associated with received channel which may be acquired by [get_receive_channel].
-///
-/// A message sent to a TAG or socket which does not exist will simply be dropped.
-pub async fn cast(tag: String, msg: String) {
-    acast::cast(tag, msg).await;
+#[derive(Subcommand)]
+enum Mode {
+    /// Server mode
+    Server(ServerOption),
+    /// Client mode
+    Client(ClientOption),
 }
 
-/// Sends a message to a socket. note that [init] must be called first!
-/// Tag is associated with received channel which may be acquired by [get_receive_channel].
-///
-/// A message sent to a TAG or socket which does not exist will simply be dropped.
-pub async fn send(tag: String, msg: String, socket: String) {
-    server::send(tag, msg, socket).await.ok();
-    // tokio::spawn(server::send(tag, msg, socket));
+#[derive(Args, Debug)]
+struct ServerOption {
+    // /// Certificates path
+    // #[arg(long)]
+    // cert: String,
+
+    // /// Private key path
+    // #[arg(long)]
+    // key:String,
+    /// Identity of the server: cert + key
+
+    #[arg(short, long, default_value = "docker_x509/central/central.pem")]
+    identity: String,
+
+    /// Certificate Authority path
+    #[arg(short, long, default_value = "docker_x509/ca/ca.crt")]
+    ca: String,
+
+    /// Server port
+    #[arg(short, long, default_value = "3030")]
+    port: String,
 }
 
-/// Register a tag to listen to. Returns a receive channel which all such tagged messages
-/// will be deliver to. See [send] and [cast]. [init] must be called first!
-pub async fn get_receive_channel(id: String) -> Receiver<String> {
-    let (tx_to_server, rx_to_client): (Sender<String>, Receiver<String>) = unbounded();
-    server::add_to_pubsub(id.clone(), tx_to_server).await.ok();
-    warn!("Creating a server of {id}");
-    rx_to_client
+#[derive(Args, Debug)]
+struct ClientOption {
+    // /// Certificates path
+    // #[arg(long)]
+    // cert: String,
+
+    // /// Private key path
+    // #[arg(long)]
+    // key:String,
+    /// Identity of the server: cert + key
+
+    #[arg(short, long, default_value = "docker_x509/ecu1/ecu1.pem")]
+    identity: String,
+
+    /// Certificate Authority path
+    #[arg(short, long, default_value = "docker_x509/ca/ca.crt")]
+    ca: String,
+
+    // server address
+    #[arg(long, default_value = "central")]
+    central_addr: String,
+
+    /// Server port
+    #[arg(short, long, default_value = "3030")]
+    port: String,
 }
 
-pub fn get_size() -> i32 {
-    server::get_total()
+mod client;
+mod helper;
+mod server;
+
+use client::run_client;
+use helper::{Message, MsgType};
+use server::Server;
+
+use tokio::sync::mpsc::unbounded_channel;
+
+// Testing only
+// use serde::{Deserialize, Serialize};
+
+/// ###################################################################
+/// Main Function
+/// ###################################################################
+
+#[tokio::main]
+async fn main() {
+    let args = App::parse();
+
+    match &args.mode {
+        // Start as a server
+        Mode::Server(ServerOption { identity, ca, port }) => {
+            let (tx, mut rx) = unbounded_channel::<String>();
+            let mut my_server = Server::new(
+                identity.to_string(),
+                ca.to_string(),
+                port.to_string(),
+                tx.clone(),
+            )
+            .await;
+
+            // test for serializing and deserializing objects.
+            // if let Ok(test_server_serialized) = serde_json::to_string(&my_server) {
+            //     println!("{test_server_serialized}");
+            //     let deserialized_server = serde_json::from_slice::<Server>(test_server_serialized.as_bytes());
+            //     println!("{deserialized_server:?}")
+            // } else {
+            //     println!("Could not serialized the server");
+            // }
+
+            // Handle incoming message from tx channel
+            loop {
+                let Some(msg) = rx.recv().await else {
+                    panic!("Server::main: received message is not a string");
+                };
+
+                if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
+                    // Match the message type and handle accordingly
+                    match msg.msg_type {
+                        MsgType::Keygen => {
+                            println!("KeyGen type: {}", msg.msg);
+                            todo!("Add handler for keygen");
+                        }
+                        MsgType::Nonce => {
+                            println!("Nonce type: {}", msg.msg);
+                            todo!("Add nonce for keygen");
+                        }
+                        MsgType::Sign => {
+                            println!("Sign type: {}", msg.msg);
+                            todo!("Add sign for keygen");
+                        }
+                        MsgType::Update => {
+                            println!("Update type: {}", msg.msg);
+                            todo!("Add update for keygen");
+                        }
+                    }
+                } else {
+                    // Just for debugging
+                    println!("Not of Message struct but hey: {msg:?}");
+                }
+            }
+        }
+
+        // Start as a client
+        Mode::Client(ClientOption {
+            identity,
+            ca,
+            central_addr,
+            port,
+        }) => {
+            let _ = run_client(
+                identity.to_string(),
+                ca.to_string(),
+                central_addr.to_owned() + ":" + port,
+            )
+            .await;
+            // let _ = run_client("server:3030".to_string()).await;
+            // println!("Arguments for Client: {option:?}");
+        }
+    }
 }
 
-pub fn get_total_messages() -> i32 {
-    server::get_total_messages()
-}
+// ###################################################################
