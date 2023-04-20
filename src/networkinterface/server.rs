@@ -1,6 +1,7 @@
+#![allow(dead_code)]
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
-
+use std::net::SocketAddr;
 use super::helper::{get_identity, reqwest_read_cert, Message};
 
 // #[derive(Clone, Deserialize, Debug, Serialize)]
@@ -10,8 +11,10 @@ pub struct Server {
     identity: String,
     // CA of other nodes
     ca: String,
+    // server address
+    addr: String,
     // Port that this server runs on
-    port: u16,
+    port: String,
     // List of clients/nodes/neighbours
     clients: Vec<String>,
     // clients:    HashMap<String, String>,
@@ -22,18 +25,18 @@ impl Server {
     pub async fn new(
         identity: String,
         ca: String,
+        addr:String, 
         port: String,
         tx: UnboundedSender<String>,
     ) -> Server {
-        // parse port to u16 to be used in warp::serve
-        // beautiful ey? Rust is awesome!!!!
-        let port = port
-            .parse::<u16>()
-            .expect("Server::main::Port is not parsable");
-        // Spawn a new thread to serve the connection
-        // Tokio thread is not real thread!
+
+        let _addr = addr.clone();
+        let _port = port.clone();
+        let _ca = ca.clone();
+        let _identity = identity.clone();
+
         tokio::spawn(async move {
-            _serve(port, tx).await;
+            _serve(_identity, _ca, _addr, _port, tx).await;
         });
         // Build sending method for the server
         // The reason for this is so that this is not done everytime the server sends messages to other nodes.
@@ -54,19 +57,13 @@ impl Server {
             .build()
         {
             // Only return Server instance _client is built.
-            Self {
-                identity,
-                ca,
-                port,
-                clients: Vec::<String>::new(),
-                _client,
-            }
+            Self {identity, ca, addr, port, clients: Vec::<String>::new(), _client}
         } else {
             panic!("Cant build _client");
         }
     }
     // Have not tested
-    pub fn add_client(&mut self, name: String, addr: String) {
+    pub fn add_client(&mut self, addr: String) {
         self.clients.push(addr);
     }
     // Have not tested
@@ -75,7 +72,7 @@ impl Server {
         let msg = serde_json::to_string(&msg).expect("Cant serialize this message");
         // Send it!
         self._client
-            .post(receiver.to_owned() + &channel)
+            .post("https://".to_owned() + &receiver + "/"+ &channel)
             .body(msg)
             .send()
             .await
@@ -90,7 +87,7 @@ impl Server {
     }
 }
 
-async fn _serve(port: u16, tx: UnboundedSender<String>) {
+async fn _serve(identity: String, ca: String, addr:String, port: String, tx: UnboundedSender<String>) {
     // Wrap the transmission channel into a Filter so that it can be included into warp_routes
     // Technicality thing
     let warp_tx = warp::any().map(move || tx.clone());
@@ -128,11 +125,15 @@ async fn _serve(port: u16, tx: UnboundedSender<String>) {
         });
     // Serve the connection.
     // Will run in forever loop. There is a way to gracefully shutdown this. But nah for now.
-    warp::serve(warp_routes)
-        .tls()
-        .key_path("docker_x509/central/central.pem")
-        .cert_path("docker_x509/central/central.pem")
-        .client_auth_required_path("docker_x509/ca/ca.crt")
-        .run(([172, 18, 0, 2], port))
-        .await;
+    if let Ok(socket) = (addr.to_owned()+":"+ &port).parse::<SocketAddr>() {
+        warp::serve(warp_routes)
+            .tls()
+            .key_path(identity.clone())
+            .cert_path(identity.clone())
+            .client_auth_required_path(ca.clone())
+            .run(socket)
+            .await;
+    } else {
+        panic!("Invalid server address or port")
+    }
 }

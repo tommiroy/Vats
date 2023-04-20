@@ -21,51 +21,46 @@ enum Mode {
 
 #[derive(Args, Debug)]
 struct ServerOption {
-    // /// Certificates path
-    // #[arg(long)]
-    // cert: String,
-
-    // /// Private key path
-    // #[arg(long)]
-    // key:String,
     /// Identity of the server: cert + key
-
-    #[arg(short, long, default_value = "docker_x509/central/central.pem")]
+    #[arg(short('i'), long, default_value = "docker_x509/central/central.pem")]
     identity: String,
 
     /// Certificate Authority path
-    #[arg(short, long, default_value = "docker_x509/ca/ca.crt")]
+    #[arg(short('c'), long, default_value = "docker_x509/ca/ca.crt")]
     ca: String,
 
+    /// server address
+    #[arg(short, long, default_value = "central")]
+    addr: String,
+
     /// Server port
-    #[arg(short, long, default_value = "3030")]
+    #[arg(short('p'), long, default_value = "3030")]
     port: String,
 }
 
 #[derive(Args, Debug)]
 struct ClientOption {
-    // /// Certificates path
-    // #[arg(long)]
-    // cert: String,
-
-    // /// Private key path
-    // #[arg(long)]
-    // key:String,
-    /// Identity of the server: cert + key
-
-    #[arg(short, long, default_value = "docker_x509/ecu1/ecu1.pem")]
+    #[arg(short('i'), long, default_value = "docker_x509/ecu1/ecu1.pem")]
     identity: String,
 
     /// Certificate Authority path
-    #[arg(short, long, default_value = "docker_x509/ca/ca.crt")]
+    #[arg(short('c'), long, default_value = "docker_x509/ca/ca.crt")]
     ca: String,
 
-    // server address
-    #[arg(long, default_value = "central")]
+    /// server address
+    #[arg(long, default_value = "server")]
     central_addr: String,
 
+    /// Central server port
+    #[arg(long, default_value = "3030")]
+    central_port: String,
+
     /// Server port
-    #[arg(short, long, default_value = "3030")]
+    #[arg(short('a'), long, default_value = "127.0.0.1")]
+    addr: String,
+
+    /// Server port
+    #[arg(short('p'), long, default_value = "3031")]
     port: String,
 }
 
@@ -73,7 +68,8 @@ mod client;
 mod helper;
 mod server;
 
-use client::run_client;
+// use client::run_client;
+use client::Client;
 use helper::{Message, MsgType};
 use server::Server;
 
@@ -86,21 +82,19 @@ use tokio::sync::mpsc::unbounded_channel;
 /// Main Function
 /// ###################################################################
 
-#[tokio::main]
-async fn main() {
+pub async fn network() {
     let args = App::parse();
 
-    match &args.mode {
+    let (tx, mut rx) = unbounded_channel::<String>();
+    match args.mode {
         // Start as a server
-        Mode::Server(ServerOption { identity, ca, port }) => {
-            let (tx, mut rx) = unbounded_channel::<String>();
-            let mut my_server = Server::new(
-                identity.to_string(),
-                ca.to_string(),
-                port.to_string(),
-                tx.clone(),
-            )
-            .await;
+        Mode::Server(ServerOption {
+            identity,
+            ca,
+            addr,
+            port,
+        }) => {
+            let mut my_server = Server::new(identity, ca, addr, port, tx).await;
 
             // test for serializing and deserializing objects.
             // if let Ok(test_server_serialized) = serde_json::to_string(&my_server) {
@@ -149,18 +143,70 @@ async fn main() {
             identity,
             ca,
             central_addr,
+            central_port,
+            addr,
             port,
         }) => {
-            let _ = run_client(
-                identity.to_string(),
-                ca.to_string(),
-                central_addr.to_owned() + ":" + port,
-            )
-            .await;
-            // let _ = run_client("server:3030".to_string()).await;
-            // println!("Arguments for Client: {option:?}");
-        }
+            // let _ = run_client(
+            //     identity.to_string(),
+            //     ca.to_string(),
+            //     central_addr.to_string(),
+            //     port.to_string(),
+            // )
+            // .await;
+            let my_client =
+                Client::new(identity, ca, addr, port, central_addr, central_port, tx).await;
+            let msg = Message {
+                sender: "ecu1".to_string(),
+                receiver: "central".to_string(),
+                msg_type: MsgType::Keygen,
+                msg: "This is ecu1 test".to_string(),
+            };
+            let res = my_client.send("keygen".to_owned(), msg).await;
+            println!("{res:?}");
+
+            loop {
+                let Some(msg) = rx.recv().await else {
+                    panic!("Server::main: received message is not a string");
+                };
+
+                if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
+                    // Match the message type and handle accordingly
+                    match msg.msg_type {
+                        MsgType::Keygen => {
+                            println!("KeyGen type: {}", msg.msg);
+                            todo!("Add handler for keygen");
+                        }
+                        MsgType::Nonce => {
+                            println!("Nonce type: {}", msg.msg);
+                            todo!("Add nonce for keygen");
+                        }
+                        MsgType::Sign => {
+                            println!("Sign type: {}", msg.msg);
+                            todo!("Add sign for keygen");
+                        }
+                        MsgType::Update => {
+                            println!("Update type: {}", msg.msg);
+                            todo!("Add update for keygen");
+                        }
+                    }
+                } else {
+                    // Just for debugging
+                    println!("Not of Message struct but hey: {msg:?}");
+                }
+            }
+        } // Mode::Client(ClientOption {identity, ca, central, addr, port}) => {
+          //     let _ = run_client(
+          //         identity.to_string(),
+          //         ca.to_string(),
+          //         central.to_string(),
+          //         port.to_string(),
+          //     )
+          //     .await;
+          // }
     }
 }
 
 // ###################################################################
+// cargo run client -i local_x509/server/server.pem -c local_x509/ca/ca.crt
+// cargo run server -i local_x509/server/server.pem -c local_x509/ca/ca.crt -a 127.0.0.1 -p 3030

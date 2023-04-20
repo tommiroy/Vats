@@ -20,8 +20,12 @@ mod testground;
 
 mod test_signing;
 use crate::test_signing::*;
+mod networkinterface;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // test_signing();
-    bl();
+    //bl();
+    // run tokio thread with a client
+    networkinterface::network().await;
 }

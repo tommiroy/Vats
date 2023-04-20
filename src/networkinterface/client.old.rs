@@ -5,7 +5,6 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use warp::*;
 
-
 use super::helper::{get_identity, reqwest_read_cert};
 
 #[derive(Serialize, Deserialize)]
@@ -19,9 +18,8 @@ pub struct Idmsg {
     text: String,
 }
 
-pub async fn run_client(ip: String) -> Result<(), reqwest::Error> {
-    let server_ca_file_loc = "local_x509/ca/ca.crt";
-    let cert = reqwest_read_cert(server_ca_file_loc.to_owned()).await;
+pub async fn run_client(identity: String, ca: String, addr:String ,port: String) -> Result<(), reqwest::Error> {
+    let _cert = reqwest_read_cert(ca.to_owned()).await;
     // let mut buf = Vec::new();
     // File::open(server_ca_file_loc)
     //     .await
@@ -43,21 +41,22 @@ pub async fn run_client(ip: String) -> Result<(), reqwest::Error> {
     //     reqwest::Identity::from_pem(&buf).unwrap()
     // }
 
-    let identity = get_identity("local_x509/client/client_0.pem".to_owned()).await;
+    let _identity = get_identity(identity).await;
 
     let client = reqwest::Client::builder().use_rustls_tls();
 
     let client = client
         .tls_built_in_root_certs(false)
-        .add_root_certificate(cert)
-        .identity(identity)
+        .add_root_certificate(_cert)
+        .identity(_identity)
         .https_only(true)
         .build()?;
 
-    let server_ip = "https://".to_owned() + &ip + "/";
+    let server_ip = "https://".to_owned() + &addr + ":" + &port + "/";
+    // println!("{server_ip}");
 
     // let ras = send_message(&server_ip, &client, "route2", request2.clone()).await;
-    let res = send_message(&server_ip, &client, "nonce", "keygen process".to_string()).await;
+    let res = send_message(&server_ip, &client, "keygen", "keygen process".to_string()).await;
     println!("Received:");
     println!("Server responded with message: {:?}", res);
     // println!("Received:");

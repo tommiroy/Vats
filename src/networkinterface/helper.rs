@@ -36,9 +36,9 @@ pub async fn get_identity(path: String) -> Identity {
     reqwest::Identity::from_pem(&buf).unwrap()
 }
 
-/// ######################################################
+// ######################################################
 /// Message description
-/// ######################################################
+// ######################################################
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Message {
     // Should have sender and receiver anyways
@@ -58,3 +58,25 @@ pub enum MsgType {
     Sign,
     Update,
 }
+
+
+
+// ######################################################
+/// Message description
+// ######################################################
+
+pub async fn reqwest_send(reqwest_client: reqwest::Client, receiver: String, channel: String, msg: Message) -> reqwest::Response {
+    // Serialize the message
+    let msg = serde_json::to_string(&msg).expect("Cant serialize this message");
+    // let _url = "https://".to_owned() + &receiver + "/"+ &channel;
+    // println!("{_url}");
+    // Send it!
+    println!("{msg}");
+    reqwest_client
+        .post("https://".to_owned() + &receiver + "/"+ &channel)
+        .body(serde_json::to_string(&msg).unwrap())
+        .send()
+        .await
+        .unwrap()
+}
+
