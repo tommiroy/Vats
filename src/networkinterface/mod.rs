@@ -113,8 +113,9 @@ pub async fn network() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             println!("KeyGen type: {}", msg.msg);
-                            my_server.send("client:3031".to_owned(), "keygen".to_owned(), msg).await;
-                            todo!("Add handler for keygen");
+                            let test = my_server.send("client:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
+                            println!("Status of sending message: \n {test:?}");
+                            // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
                             println!("Nonce type: {}", msg.msg);
@@ -200,5 +201,5 @@ pub async fn network() {
 }
 
 // ###################################################################
-// cargo run client -i local_x509/server/server.pem -c local_x509/ca/ca.crt
-// cargo run server -i local_x509/server/server.pem -c local_x509/ca/ca.crt -a 127.0.0.1 -p 3030
+// cargo run client -i /home/ab000668/thesis/implementation/Vats/local_x509/client/client.pem -c /home/ab000668/thesis/implementation/Vats/local_x509/ca/ca.crt -a 127.0.0.1 -p 3031 --caddr client --cport 3030
+// cargo run server -i /home/ab000668/thesis/implementation/Vats/local_x509/server/server.pem -c /home/ab000668/thesis/implementation/Vats/local_x509/ca/ca.crt -a 127.0.0.1 -p 3030

@@ -2,7 +2,7 @@
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
 use std::net::SocketAddr;
-use super::helper::{get_identity, reqwest_read_cert, Message};
+use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
 
 // #[derive(Clone, Deserialize, Debug, Serialize)]
 #[derive(Clone, Debug)]
@@ -66,17 +66,9 @@ impl Server {
     pub fn add_client(&mut self, addr: String) {
         self.clients.push(addr);
     }
-    // Have not tested
+    // tested
     pub async fn send(&self, receiver: String, channel: String, msg: Message) -> reqwest::Response {
-        // Serialize the message
-        let msg = serde_json::to_string(&msg).expect("Cant serialize this message");
-        // Send it!
-        self._client
-            .post("https://".to_owned() + &receiver + "/"+ &channel)
-            .body(msg)
-            .send()
-            .await
-            .unwrap()
+        reqwest_send(self._client.clone(), receiver, channel, msg).await
     }
     // Have not tested
     // Broadcast a message to all nodes in clients
@@ -117,7 +109,7 @@ async fn _serve(identity: String, ca: String, addr:String, port: String, tx: Unb
                 panic!("Cant relay message back to main thread!. Error: {e}");
             } else {
                 // Honestly no need. Just debugging
-                println!("Sent a message back!");
+                // println!("Sent a message back!");
             }
             // Reply back to the sender.
             // Reply the original message for debugging just for now. Otherwise, just reply Ok(200 code)

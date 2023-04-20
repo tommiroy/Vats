@@ -71,7 +71,7 @@ pub async fn reqwest_send(reqwest_client: reqwest::Client, receiver: String, cha
     // let _url = "https://".to_owned() + &receiver + "/"+ &channel;
     // println!("{_url}");
     // Send it!
-    println!("{msg}");
+    println!("{}", msg.clone());
     reqwest_client
         .post("https://".to_owned() + &receiver + "/"+ &channel)
         .body(serde_json::to_string(&msg).unwrap())
