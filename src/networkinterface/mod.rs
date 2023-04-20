@@ -21,6 +21,7 @@ enum Mode {
 
 #[derive(Args, Debug)]
 struct ServerOption {
+
     /// Identity of the server: cert + key
     #[arg(short('i'), long, default_value = "docker_x509/central/central.pem")]
     identity: String,
@@ -40,6 +41,7 @@ struct ServerOption {
 
 #[derive(Args, Debug)]
 struct ClientOption {
+
     #[arg(short('i'), long, default_value = "docker_x509/ecu1/ecu1.pem")]
     identity: String,
 
@@ -48,13 +50,14 @@ struct ClientOption {
     ca: String,
 
     /// server address
-    #[arg(long, default_value = "server")]
+    #[arg(long("caddr"), default_value = "server")]
     central_addr: String,
 
     /// Central server port
-    #[arg(long, default_value = "3030")]
+    #[arg(long("cport"), default_value = "3030")]
     central_port: String,
 
+    
     /// Server port
     #[arg(short('a'), long, default_value = "127.0.0.1")]
     addr: String,
@@ -73,8 +76,7 @@ use client::Client;
 use helper::{Message, MsgType};
 use server::Server;
 
-use tokio::sync::mpsc::unbounded_channel;
-
+use tokio::sync::mpsc::unbounded_channel; 
 // Testing only
 // use serde::{Deserialize, Serialize};
 
@@ -88,14 +90,9 @@ pub async fn network() {
     let (tx, mut rx) = unbounded_channel::<String>();
     match args.mode {
         // Start as a server
-        Mode::Server(ServerOption {
-            identity,
-            ca,
-            addr,
-            port,
-        }) => {
+        Mode::Server(ServerOption { identity, ca, addr, port }) => {
             let mut my_server = Server::new(identity, ca, addr, port, tx).await;
-
+            my_server.add_client("127.0.0.1:3031".to_string());
             // test for serializing and deserializing objects.
             // if let Ok(test_server_serialized) = serde_json::to_string(&my_server) {
             //     println!("{test_server_serialized}");
@@ -116,6 +113,7 @@ pub async fn network() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             println!("KeyGen type: {}", msg.msg);
+                            my_server.send("client:3031".to_owned(), "keygen".to_owned(), msg).await;
                             todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
@@ -139,14 +137,7 @@ pub async fn network() {
         }
 
         // Start as a client
-        Mode::Client(ClientOption {
-            identity,
-            ca,
-            central_addr,
-            central_port,
-            addr,
-            port,
-        }) => {
+        Mode::Client(ClientOption {identity, ca, central_addr, central_port, addr, port}) => {
             // let _ = run_client(
             //     identity.to_string(),
             //     ca.to_string(),
@@ -154,14 +145,11 @@ pub async fn network() {
             //     port.to_string(),
             // )
             // .await;
-            let my_client =
-                Client::new(identity, ca, addr, port, central_addr, central_port, tx).await;
-            let msg = Message {
-                sender: "ecu1".to_string(),
-                receiver: "central".to_string(),
-                msg_type: MsgType::Keygen,
-                msg: "This is ecu1 test".to_string(),
-            };
+            let my_client = Client::new(identity, ca, addr, port, central_addr, central_port, tx).await;
+            let msg = Message {sender:"ecu1".to_string(), 
+                                        receiver: "central".to_string(), 
+                                        msg_type:MsgType::Keygen, 
+                                        msg: "This is ecu1 test".to_string()};
             let res = my_client.send("keygen".to_owned(), msg).await;
             println!("{res:?}");
 
@@ -195,16 +183,20 @@ pub async fn network() {
                     println!("Not of Message struct but hey: {msg:?}");
                 }
             }
-        } // Mode::Client(ClientOption {identity, ca, central, addr, port}) => {
-          //     let _ = run_client(
-          //         identity.to_string(),
-          //         ca.to_string(),
-          //         central.to_string(),
-          //         port.to_string(),
-          //     )
-          //     .await;
-          // }
+
+        }
+        // Mode::Client(ClientOption {identity, ca, central, addr, port}) => {
+        //     let _ = run_client(
+        //         identity.to_string(),
+        //         ca.to_string(),
+        //         central.to_string(),
+        //         port.to_string(),
+        //     )
+        //     .await;
+        // }
+
     }
+
 }
 
 // ###################################################################

@@ -15,11 +15,6 @@ use std::{collections::HashMap, env, io::Write};
 mod signing;
 //#[tokio::main]
 
-use crate::testground::test_ristretto;
-mod testground;
-
-mod test_signing;
-use crate::test_signing::*;
 mod networkinterface;
 
 #[tokio::main]
@@ -29,3 +24,5 @@ async fn main() {
     // run tokio thread with a client
     networkinterface::network().await;
 }
+
+// Co-authored-by: tommiroy <tommiroy@users.noreply.github.com>
