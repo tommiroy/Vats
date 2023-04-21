@@ -77,6 +77,7 @@ use helper::{Message, MsgType};
 use server::Server;
 
 use tokio::sync::mpsc::unbounded_channel; 
+use tokio::time::{sleep, Duration};
 // Testing only
 // use serde::{Deserialize, Serialize};
 
@@ -92,15 +93,9 @@ pub async fn network() {
         // Start as a server
         Mode::Server(ServerOption { identity, ca, addr, port }) => {
             let mut my_server = Server::new(identity, ca, addr, port, tx).await;
-            my_server.add_client("127.0.0.1:3031".to_string());
-            // test for serializing and deserializing objects.
-            // if let Ok(test_server_serialized) = serde_json::to_string(&my_server) {
-            //     println!("{test_server_serialized}");
-            //     let deserialized_server = serde_json::from_slice::<Server>(test_server_serialized.as_bytes());
-            //     println!("{deserialized_server:?}")
-            // } else {
-            //     println!("Could not serialized the server");
-            // }
+            my_server.add_client("ecu1:3031".to_string());
+            my_server.add_client("ecu2:3032".to_string());
+            my_server.add_client("ecu3:3033".to_string());
 
             // Handle incoming message from tx channel
             loop {
@@ -112,9 +107,11 @@ pub async fn network() {
                     // Match the message type and handle accordingly
                     match msg.msg_type {
                         MsgType::Keygen => {
-                            println!("KeyGen type: {}", msg.msg);
-                            let test = my_server.send("client:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
-                            println!("Status of sending message: \n {test:?}");
+                            println!("KeyGen type:\n Sender: {}\n Message: {}", msg.sender, msg.msg);
+                            let res_broadcast = my_server.broadcast("keygen".to_string(), msg).await;
+                            // println!("Response from broadcast: \n {:?}", res_broadcast);
+                            // let test = my_server.send("ecu1:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
+                            // println!("Status of sending message: \n {test:?}");
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
@@ -139,21 +136,16 @@ pub async fn network() {
 
         // Start as a client
         Mode::Client(ClientOption {identity, ca, central_addr, central_port, addr, port}) => {
-            // let _ = run_client(
-            //     identity.to_string(),
-            //     ca.to_string(),
-            //     central_addr.to_string(),
-            //     port.to_string(),
-            // )
-            // .await;
             let my_client = Client::new(identity, ca, addr, port, central_addr, central_port, tx).await;
+            // Testing purposes --------------------------------------------------
             let msg = Message {sender:"ecu1".to_string(), 
                                         receiver: "central".to_string(), 
                                         msg_type:MsgType::Keygen, 
                                         msg: "This is ecu1 test".to_string()};
+            sleep(Duration::from_millis(500)).await;
             let res = my_client.send("keygen".to_owned(), msg).await;
             println!("{res:?}");
-
+            // -------------------------------------------------------------------
             loop {
                 let Some(msg) = rx.recv().await else {
                     panic!("Server::main: received message is not a string");
@@ -164,19 +156,19 @@ pub async fn network() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             println!("KeyGen type: {}", msg.msg);
-                            todo!("Add handler for keygen");
+                            // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
                             println!("Nonce type: {}", msg.msg);
-                            todo!("Add nonce for keygen");
+                            // todo!("Add nonce for keygen");
                         }
                         MsgType::Sign => {
                             println!("Sign type: {}", msg.msg);
-                            todo!("Add sign for keygen");
+                            // todo!("Add sign for keygen");
                         }
                         MsgType::Update => {
                             println!("Update type: {}", msg.msg);
-                            todo!("Add update for keygen");
+                            // todo!("Add update for keygen");
                         }
                     }
                 } else {
@@ -186,16 +178,6 @@ pub async fn network() {
             }
 
         }
-        // Mode::Client(ClientOption {identity, ca, central, addr, port}) => {
-        //     let _ = run_client(
-        //         identity.to_string(),
-        //         ca.to_string(),
-        //         central.to_string(),
-        //         port.to_string(),
-        //     )
-        //     .await;
-        // }
-
     }
 
 }

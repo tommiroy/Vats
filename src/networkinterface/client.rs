@@ -66,9 +66,9 @@ impl Client {
         }
     }
     // Have not tested
-    pub async fn send(&self, channel: String, msg: Message) -> reqwest::Response {
+    pub async fn send(&self, channel: String, msg: Message) -> String{
         // reqwest_send(self._client.clone(), self.central.clone(),channel, msg).await
-        reqwest_send(self._client.clone(), "server:3030".to_string(),channel, msg).await
+        reqwest_send(self._client.clone(), "central:3030".to_string(),channel, msg).await
 
     }
 }
@@ -103,7 +103,7 @@ async fn _serve(identity: String, ca: String, addr:String, port: String, tx: Unb
                 panic!("Cant relay message back to main thread!. Error: {e}");
             } else {
                 // Honestly no need. Just debugging
-                println!("Sent a message back!");
+                // println!("Sent a message back!");
             }
             // Reply back to the sender.
             // Reply the original message for debugging just for now. Otherwise, just reply Ok(200 code)

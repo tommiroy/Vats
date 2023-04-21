@@ -67,17 +67,18 @@ impl Server {
         self.clients.push(addr);
     }
     // tested
-    pub async fn send(&self, receiver: String, channel: String, msg: Message) -> reqwest::Response {
+    pub async fn send(&self, receiver: String, channel: String, msg: Message) -> String {
         reqwest_send(self._client.clone(), receiver, channel, msg).await
     }
     // Have not tested
     // Broadcast a message to all nodes in clients
     pub async fn broadcast(&self, channel: String, msg: Message) {
         for node in self.clients.clone() {
-            self.send(node, channel.clone(), msg.clone()).await;
+            let res = self.send(node.clone(), channel.clone(), msg.clone()).await;
+            // println!("Sending message to {}: \n Response: {:?}", node, res);
         }
     }
-}
+} 
 
 async fn _serve(identity: String, ca: String, addr:String, port: String, tx: UnboundedSender<String>) {
     // Wrap the transmission channel into a Filter so that it can be included into warp_routes

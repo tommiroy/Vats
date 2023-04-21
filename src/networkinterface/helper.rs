@@ -65,18 +65,20 @@ pub enum MsgType {
 /// Message description
 // ######################################################
 
-pub async fn reqwest_send(reqwest_client: reqwest::Client, receiver: String, channel: String, msg: Message) -> reqwest::Response {
+pub async fn reqwest_send(reqwest_client: reqwest::Client, receiver: String, channel: String, msg: Message) -> String{
     // Serialize the message
     let msg = serde_json::to_string(&msg).expect("Cant serialize this message");
-    // let _url = "https://".to_owned() + &receiver + "/"+ &channel;
-    // println!("{_url}");
     // Send it!
-    println!("{}", msg.clone());
-    reqwest_client
+    // println!("{}", msg.clone());
+    if let Ok(res) = reqwest_client
         .post("https://".to_owned() + &receiver + "/"+ &channel)
         .body(serde_json::to_string(&msg).unwrap())
         .send()
-        .await
-        .unwrap()
+        .await {
+            "Successfully sent message!".to_owned()
+    } else {
+        format!("cannot send message to {receiver}").to_owned()
+    }
+
 }
 
