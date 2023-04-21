@@ -1,6 +1,12 @@
+use base64::{engine::general_purpose, Engine as _};
+use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+
 use sha2::{Digest, Sha512};
+use uuid::timestamp::context;
+
+pub const RISTRETTO_POINT_SIZE_IN_BYTES: usize = 32;
 
 #[derive(Clone)]
 pub struct PrivateKey {
@@ -49,7 +55,7 @@ impl Committee {
         }
     }
 
-    pub fn set_public_key(&mut self, key:RistrettoPoint) {
+    pub fn set_public_key(&mut self, key: RistrettoPoint) {
         self.public_key = key;
     }
 }
@@ -131,6 +137,33 @@ pub fn hash_non(com: Committee, outs: Vec<RistrettoPoint>, m: String) -> Scalar 
     Scalar::from_bytes_mod_order_wide(&result_bytes)
 }
 
+// #################### Hash Key ###########################
+
+pub fn hash_key(
+    i: u32,
+    context_string: String,
+    ga: RistrettoPoint,
+    big_r: RistrettoPoint,
+) -> Scalar {
+    let mut hasher = Sha512::new();
+    // hash $b:= H_{non}(\widetilde{Y},(R_1,...,R_v),m)$
+
+    hasher.update(i.to_be_bytes());
+
+    hasher.update(context_string.as_bytes());
+
+    hasher.update(ga.compress().as_bytes());
+
+    hasher.update(big_r.compress().as_bytes());
+
+    // convert the hash to a scalar to get the correct calulations
+    let result = hasher.finalize();
+    let mut result_bytes = [0u8; 64];
+    result_bytes.copy_from_slice(&result);
+
+    Scalar::from_bytes_mod_order_wide(&result_bytes)
+}
+
 // #################### Helper functions ###########################
 
 // Compute larange coefficient
@@ -147,4 +180,81 @@ pub fn compute_lagrange_coefficient(committee: Committee, x0: u32) -> Scalar {
         }
     }
     lagrange_coefficient
+}
+
+// power function for Scalar, since Scalar does not have a pow function implemented
+pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {   
+    let mut result = Scalar::one();
+    for _ in 0..exp {
+        result *= base;
+    }
+    result
+}
+
+
+
+// #################### Broadcasting functions ###########################
+// Make RistrettoPoint to string
+pub fn point_to_string(point: RistrettoPoint) -> String {
+    let mut point_string = String::new();
+    point_string.push_str(
+        general_purpose::STANDARD_NO_PAD
+            .encode(&point.compress().as_bytes())
+            .as_str(),
+    );
+    point_string
+}
+
+// String to bytes
+pub fn string_to_bytes(point: &str) -> Result<Vec<u8>, &'static str> {
+    let decode_tmp = general_purpose::STANDARD_NO_PAD
+        .decode(point.as_bytes())
+        .unwrap();
+    Ok(decode_tmp)
+}
+
+// Make string to RistrettoPoint
+pub fn string_to_point(point: &str) -> Result<RistrettoPoint, &'static str> {
+    let decode_tmp = string_to_bytes(point)?;
+    if decode_tmp.len() != RISTRETTO_POINT_SIZE_IN_BYTES {
+        return Err("string_to_point decode failed");
+    }
+    let point_value = match CompressedRistretto::from_slice(&decode_tmp).decompress() {
+        Some(v) => v,
+        None => return Err("string_to_point decompress CompressedRistretto failed"),
+    };
+
+    Ok(point_value)
+}
+
+/// Converts Scalar to an encoded string.
+pub fn scalar_to_string(number: &Scalar) -> String {
+    let mut number_string = String::new();
+    number_string.push_str(
+        general_purpose::STANDARD_NO_PAD
+            .encode(&number.to_bytes())
+            .as_str(),
+    );
+    number_string
+}
+/// Converts an encoded string to Scalar.
+pub fn string_to_scalar(num: &str) -> Result<Scalar, &'static str> {
+    let num_u8 = match string_to_bytes(num) {
+        Ok(v) => v,
+        Err(_) => {
+            return Err("string_to_scalar failed");
+        }
+    };
+    let get_num_u8 = to_bytes32_slice(&num_u8)?;
+    let scalar_num = Scalar::from_bits(*get_num_u8);
+    Ok(scalar_num)
+}
+fn to_bytes32_slice(barry: &[u8]) -> Result<&[u8; 32], &'static str> {
+    let pop_u8 = match barry.try_into() {
+        Ok(v) => v,
+        Err(_) => {
+            return Err("string_to_scalar failed");
+        }
+    };
+    Ok(pop_u8)
 }

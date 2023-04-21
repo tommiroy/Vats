@@ -53,11 +53,3 @@ pub fn sign_on(
 
     (big_r, z_1)
 }
-
-fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
-    let mut result = Scalar::one();
-    for _ in 0..exp {
-        result *= base;
-    }
-    result
-}
