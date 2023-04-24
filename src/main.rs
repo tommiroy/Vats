@@ -5,16 +5,9 @@ Main file is solely for testing.
 */
 
 // use header::compute_lagrange_coeff;
-use signing::thresholdsignature;
-use std::env;
-use tokio::time::{Duration, Instant};
-use vats::dealer;
 mod networkinterface;
 //use core::num::dec2flt::parse;
 mod signing;
-
-use pbr::ProgressBar;
-mod networkinterface;
 
 #[tokio::main]
 async fn main() {

@@ -41,8 +41,10 @@ struct ServerOption {
 
 #[derive(Args, Debug)]
 struct ClientOption {
-
     #[arg(short('i'), long, default_value = "docker_x509/ecu1/ecu1.pem")]
+    id: u8,
+
+    #[arg(short('e'), long, default_value = "docker_x509/ecu1/ecu1.pem")]
     identity: String,
 
     /// Certificate Authority path
@@ -135,16 +137,16 @@ pub async fn network() {
         }
 
         // Start as a client
-        Mode::Client(ClientOption {identity, ca, central_addr, central_port, addr, port}) => {
-            let my_client = Client::new(identity, ca, addr, port, central_addr, central_port, tx).await;
+        Mode::Client(ClientOption {id, identity, ca, central_addr, central_port, addr, port}) => {
+            let my_client = Client::new(id, identity, ca, addr, port, central_addr, central_port, tx).await;
             // Testing purposes --------------------------------------------------
-            let msg = Message {sender:"ecu1".to_string(), 
-                                        receiver: "central".to_string(), 
-                                        msg_type:MsgType::Keygen, 
-                                        msg: "This is ecu1 test".to_string()};
-            sleep(Duration::from_millis(500)).await;
-            let res = my_client.send("keygen".to_owned(), msg).await;
-            println!("{res:?}");
+            // let msg = Message {sender:"ecu1".to_string(), 
+            //                             receiver: "central".to_string(), 
+            //                             msg_type:MsgType::Keygen, 
+            //                             msg: "This is ecu1 test".to_string()};
+            // sleep(Duration::from_millis(500)).await;
+            // let res = my_client.send("keygen".to_owned(), msg).await;
+            // println!("{res:?}");
             // -------------------------------------------------------------------
             loop {
                 let Some(msg) = rx.recv().await else {

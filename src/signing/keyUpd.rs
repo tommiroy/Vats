@@ -65,7 +65,6 @@ pub async fn key_upd(t: usize, n: usize, signer: Signer, context: &str )// -> (
         // for i in 1..t {
         //     commitments.push(mini_sigma[i]);
         // }
-        let rx = networkinterface::get_receive_channel("key_upd".to_string()).await;
 
         let sigma_i = (big_r_i, mu_i);
 
@@ -107,8 +106,6 @@ pub async fn key_upd(t: usize, n: usize, signer: Signer, context: &str )// -> (
         assert_eq!(commitments.clone(), back_to_point_commitments.clone(), "commitments: {:?}, back_to_point_commitments: {:?}", commitments, back_to_point_commitments);
 
 
-        networkinterface::cast(("key_upd").to_string(), sigma_i_string).await;
-        networkinterface::cast(("key_upd").to_string(), commitments_string).await;
         // ------------------------------------Test--------------------------------------
 
 

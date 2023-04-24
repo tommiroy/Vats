@@ -1,11 +1,14 @@
 #![allow(dead_code)]
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, collections::HashMap};
 use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
+
 
 #[derive(Clone, Debug)]
 pub struct Client {
+    // Name of the node
+    id: u8,
     // Certificate and key of this server
     identity: String,
     // CA of other nodes
@@ -18,10 +21,17 @@ pub struct Client {
     central: String,
     // clients:    HashMap<String, String>,
     _client: reqwest::Client,
+    // Secret share
+    share: String,
+    // Public keys: <ID, pubkey>
+    pubkeys: HashMap<u8, String>,
+    // Vehicle pubkey
+    vehkey: String,
 }
 
 impl Client {
     pub async fn new(
+        id: u8,
         identity: String,
         ca: String,
         addr:String, 
@@ -60,7 +70,8 @@ impl Client {
         {
             // Only return Server instance _client is built.
             let central = central_addr.to_owned() + ":" + &central_port;
-            Self {identity, ca, addr, port, central, _client}
+            // Create and return an instance of Client
+            Self {id, identity, ca, addr, port, central, _client, share: "share".to_string(), pubkeys: HashMap::<u8, String>::new(), vehkey: "vehkey".to_string()}
         } else {
             panic!("Cant build _client");
         }
@@ -69,6 +80,13 @@ impl Client {
     pub async fn send(&self, channel: String, msg: Message) -> String{
         // reqwest_send(self._client.clone(), self.central.clone(),channel, msg).await
         reqwest_send(self._client.clone(), "central:3030".to_string(),channel, msg).await
+
+    }
+
+    pub async fn setup(&mut self, share: String, pubkeys: HashMap<u8, String>, vehkey: String) {
+        self.share = share; 
+        self.pubkeys = pubkeys;
+        self.vehkey = vehkey;
 
     }
 }
