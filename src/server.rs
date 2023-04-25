@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
+use super::helper::*;
+use crate::signing::key_dealer::dealer;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
@@ -7,22 +8,24 @@ use warp::*;
 // #[derive(Clone, Deserialize, Debug, Serialize)]
 #[derive(Clone, Debug)]
 pub struct Server {
+    pub id: String,
     // Certificate and key of this server
-    identity: String,
-    // CA of other nodes
-    ca: String,
-    // server address
-    addr: String,
-    // Port that this server runs on
-    port: String,
+    // identity: String,
+    // // CA of other nodes
+    // ca: String,
+    // // server address
+    // addr: String,
+    // // Port that this server runs on
+    // port: String,
     // List of clients/nodes/neighbours
-    clients: Vec<String>,
+    pub clients: Vec<String>,
     // clients:    HashMap<String, String>,
     _client: reqwest::Client,
 }
 
 impl Server {
     pub async fn new(
+        id: String,
         identity: String,
         ca: String,
         addr: String,
@@ -57,10 +60,11 @@ impl Server {
         {
             // Only return Server instance _client is built.
             Self {
-                identity,
-                ca,
-                addr,
-                port,
+                id,
+                // identity,
+                // ca,
+                // addr,
+                // port,
                 clients: Vec::<String>::new(),
                 _client,
             }
@@ -82,6 +86,39 @@ impl Server {
         for node in self.clients.clone() {
             let res = self.send(node.clone(), channel.clone(), msg.clone()).await;
             // println!("Sending message to {}: \n Response: {:?}", node, res);
+        }
+    }
+
+    pub async fn deal_shares(self, t: usize, n: usize) {
+        // Generate keys
+        let (sks, pks, group_pk, _) = dealer(t, n);
+        for (id, node) in self.clients.clone().into_iter().enumerate() {
+            // Send each share to each participant
+            // node.send()
+            let secret_key = scalar_to_string(&sks[id].1);
+            let vehicle_key = point_to_string(group_pk);
+
+            //creating vector of keys to be able to send both keys in one message
+            let mut keys = vec![];
+            keys.push(secret_key);
+            keys.push(vehicle_key);
+
+            let _: Vec<_> = pks
+                .iter()
+                .map(|pk| keys.push(format!("{}:{}", pk.0, point_to_string(pk.1))))
+                .collect();
+
+            // message consturciton
+            let keygen_msg = Message {
+                sender: self.id.clone(),
+                receiver: node.clone(),
+                msg_type: MsgType::Keygen,
+                msg: keys,
+            };
+
+            println!("Sending message: {:?}", keygen_msg.msg);
+
+            self.send(node, "keygen".to_owned(), keygen_msg).await;
         }
     }
 }

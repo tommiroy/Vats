@@ -1,15 +1,15 @@
 use curve25519_dalek::scalar::Scalar;
 use rand::prelude::*;
 
-use crate::dealer;
-mod keyAgg;
-mod keyUpd;
-mod muSigCoef;
+pub mod keyAgg;
+pub mod keyUpd;
+pub mod key_dealer;
+pub mod muSigCoef;
 pub mod share_ver;
-mod signAgg;
-mod signAgg2;
-mod signOff;
-mod signOn;
+pub mod signAgg;
+pub mod signAgg2;
+pub mod signOff;
+pub mod signOn;
 //mod util;
 pub mod header;
 mod verification;
@@ -17,7 +17,7 @@ use crate::signing::header::*;
 
 pub async fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Example usage
-    let (sks, pks, pk, sk) = dealer::keygen(t, n);
+    let (sks, pks, pk, sk) = key_dealer::dealer(t, n);
 
     // Make a list of all participants and give them the right share
     let mut participants = Vec::<Signer>::new();
@@ -36,11 +36,6 @@ pub async fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     }
 
     committee = random_committee(committee, t);
-
-    //print what ids that are in the committee
-    // for signer in committee.clone().signers {
-    //     println!("Signer id: {}", signer.id);
-    // }
 
     committee.set_public_key(pk);
 

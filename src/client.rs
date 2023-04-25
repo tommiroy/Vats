@@ -1,15 +1,18 @@
 #![allow(dead_code)]
+use crate::helper::{string_to_point, string_to_scalar};
+
 use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
-use crate::signing::share_ver::share_ver;
+// use crate::signing::share_ver::share_ver;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use std::{collections::HashMap, net::SocketAddr};
 use tokio::sync::mpsc::UnboundedSender;
+use vats::signing::share_ver::share_ver;
 use warp::*;
 #[derive(Clone, Debug)]
 pub struct Client {
     // Name of the node
-    id: u32,
+    pub id: u32,
     // // Certificate and key of this server
     // identity: String,
     // // CA of other nodes
@@ -96,14 +99,16 @@ impl Client {
     }
 
     // When received a keygen message from server then verify the share and store it together with pubkeys and group key
-    pub async fn setup(
-        &mut self,
-        share: Scalar,
-        pubkeys: Vec<(u32, RistrettoPoint)>,
-        t: usize,
-        n: usize,
-    ) {
-        (self.share, self.pubkeys, self.vehkey) = share_ver(pubkeys, self.id, share, t, n)
+    pub fn init(&mut self, setup_msg: Vec<String>) {
+        let (share, vehkey, pks) = (&setup_msg[0], &setup_msg[1], &setup_msg[2..]);
+        self.share = string_to_scalar(share).unwrap();
+        self.vehkey = string_to_point(vehkey).unwrap();
+        for pk in pks {
+            let (id, pk) = pk.split_once(':').unwrap();
+            let id = id.parse::<u32>().unwrap();
+            let pk = string_to_point(pk).unwrap();
+            self.pubkeys.push((id, pk));
+        }
     }
 }
 

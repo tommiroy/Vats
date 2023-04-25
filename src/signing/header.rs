@@ -182,15 +182,13 @@ pub fn compute_lagrange_coefficient(committee: Committee, x0: u32) -> Scalar {
 }
 
 // power function for Scalar, since Scalar does not have a pow function implemented
-pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {   
+pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
     let mut result = Scalar::one();
     for _ in 0..exp {
         result *= base;
     }
     result
 }
-
-
 
 // #################### Broadcasting functions ###########################
 // Make RistrettoPoint to string
