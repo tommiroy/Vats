@@ -15,6 +15,7 @@ pub fn dealer(
     Vec<(u32, RistrettoPoint)>,
     RistrettoPoint,
     Scalar,
+    Vec<RistrettoPoint>,
 ) {
     let mut rng: OsRng = OsRng;
 
@@ -39,14 +40,10 @@ pub fn dealer(
     }
 
     // Generate the commitments which will be broadcasted 0<=j<=t
-    let mut B = Vec::with_capacity(n);
+    let mut big_b = Vec::with_capacity(n);
     for ai in a.clone() {
-        B.push(&RISTRETTO_BASEPOINT_TABLE * &ai);
+        big_b.push(&RISTRETTO_BASEPOINT_TABLE * &ai);
     }
-
-    // for j in 0..t {
-    //     B.push(&RISTRETTO_BASEPOINT_TABLE * &a[j]);
-    // }
 
     // Generate the public keys G^si
     let mut pks = Vec::with_capacity(n);
@@ -72,7 +69,7 @@ pub fn dealer(
         for j in 0..t {
             // rhs += B[j] * scalar_pow(Scalar::from(i as u8), j as u32);
             // rhs += B[j] * Scalar::from(i as u32 +1) * Scalar::from(j as u128);
-            rhs += B[j] * scalar_pow(Scalar::from(i as u32 + 1), j as u32);
+            rhs += big_b[j] * scalar_pow(Scalar::from(i as u32 + 1), j as u32);
         }
         if lhs != rhs {
             valid = false;
@@ -92,7 +89,7 @@ pub fn dealer(
     // assert_eq!(sk_prim, a[0], "key reconstruction is wrong in key_dealer");
 
     let pk = &RISTRETTO_BASEPOINT_TABLE * &a[0];
-    (shares, pks, pk, a[0])
+    (shares, pks, pk, a[0], big_b)
 }
 
 // #################### Helper functions ###########################

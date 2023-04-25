@@ -1,10 +1,18 @@
 #![allow(dead_code)]
 use super::helper::*;
 use crate::signing::key_dealer::dealer;
+use crate::signing::signAgg::sign_agg;
+
+use ::log::info;
+use flume::r#async;
+// use flume::r#async;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use rand::prelude::*;
+use serde_json::to_string;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
-
 // #[derive(Clone, Deserialize, Debug, Serialize)]
 #[derive(Clone, Debug)]
 pub struct Server {
@@ -21,6 +29,8 @@ pub struct Server {
     pub clients: Vec<String>,
     // clients:    HashMap<String, String>,
     _client: reqwest::Client,
+    // List of nonces from signoff
+    pub nonces: HashMap<u32, Vec<RistrettoPoint>>,
 }
 
 impl Server {
@@ -67,6 +77,7 @@ impl Server {
                 // port,
                 clients: Vec::<String>::new(),
                 _client,
+                nonces: HashMap::<u32, Vec<RistrettoPoint>>::new(),
             }
         } else {
             panic!("Cant build _client");
@@ -91,7 +102,7 @@ impl Server {
 
     pub async fn deal_shares(self, t: usize, n: usize) {
         // Generate keys
-        let (sks, pks, group_pk, _) = dealer(t, n);
+        let (sks, pks, group_pk, _, big_b) = dealer(t, n);
         for (id, node) in self.clients.clone().into_iter().enumerate() {
             // Send each share to each participant
             // node.send()
@@ -103,9 +114,18 @@ impl Server {
             keys.push(secret_key);
             keys.push(vehicle_key);
 
+            keys.push("pks".to_string());
+
             let _: Vec<_> = pks
                 .iter()
                 .map(|pk| keys.push(format!("{}:{}", pk.0, point_to_string(pk.1))))
+                .collect();
+
+            keys.push("big_bs".to_string());
+
+            let _: Vec<_> = big_b
+                .iter()
+                .map(|b| keys.push(point_to_string(*b)))
                 .collect();
 
             // message consturciton
@@ -116,9 +136,67 @@ impl Server {
                 msg: keys,
             };
 
-            println!("Sending message: {:?}", keygen_msg.msg);
+            info!("Sending message: {:?}", keygen_msg.msg);
 
             self.send(node, "keygen".to_owned(), keygen_msg).await;
+        }
+    }
+
+    pub async fn nonce_handler(&mut self, msg: Message) {
+        // println!("Nonce handler: {:?}", msg);
+        // println!("Nonce handler: {:?}", msg.msg);
+        info!("Recieved Nonces: {:?}", msg.msg);
+        self.nonces.insert(
+            msg.sender.parse::<u32>().unwrap(),
+            msg.msg
+                .iter()
+                .map(|x| {
+                    string_to_point(x)
+                        .expect("Server-nonce_handler: Couldnt not convert to RistrettoPoint")
+                })
+                .collect(),
+        );
+    }
+    pub async fn sign_msg(self, message: String, t: usize) {
+        let mut committee: Vec<u32> = self.nonces.clone().into_keys().collect();
+        let mut rng = rand::thread_rng();
+        committee.shuffle(&mut rng);
+        let committee: Vec<u32> = committee.into_iter().take(t).collect();
+
+        let mut outs = Vec::<Vec<RistrettoPoint>>::new();
+        // let temp_nonces: HashMap<u32, Vec<RistrettoPoint>> = self.nonces.clone();
+
+        for id in committee.clone() {
+            outs.push(
+                self.nonces
+                    .get(&id)
+                    .expect("Server-sig_msg: Cannot find nonce")
+                    .to_vec(),
+            );
+        }
+
+        let _out = sign_agg(outs, 2);
+        // Put out and message into a message a string vector
+        let mut out = Vec::<String>::new();
+        out.push(message.clone());
+        let _: Vec<_> = _out.iter().map(|r| out.push(point_to_string(*r))).collect();
+
+        for i in committee.clone().into_iter() {
+            let sign_req = Message {
+                sender: self.id.clone(),
+                receiver: i.to_string(),
+                msg_type: MsgType::Keygen,
+                msg: out.clone(),
+            };
+
+            info!(
+                "Signature request to committee:{:?}\n
+                Message to sign: {:?}",
+                committee, sign_req.msg
+            );
+
+            self.send(i.to_string(), "sign_req".to_owned(), sign_req)
+                .await;
         }
     }
 }

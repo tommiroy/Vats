@@ -17,7 +17,7 @@ use crate::signing::header::*;
 
 pub async fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Example usage
-    let (sks, pks, pk, sk) = key_dealer::dealer(t, n);
+    let (sks, pks, pk, sk, big_b) = key_dealer::dealer(t, n);
 
     // Make a list of all participants and give them the right share
     let mut participants = Vec::<Signer>::new();

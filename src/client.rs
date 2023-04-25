@@ -1,13 +1,17 @@
 #![allow(dead_code)]
-use crate::helper::{string_to_point, string_to_scalar};
+#![warn(clippy::too_many_arguments)]
 
-use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
+use crate::signing::header::Signer;
+
+use super::helper::*;
 // use crate::signing::share_ver::share_ver;
+use ::log::*;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
 use std::{collections::HashMap, net::SocketAddr};
 use tokio::sync::mpsc::UnboundedSender;
 use vats::signing::share_ver::share_ver;
+use vats::signing::signOff::sign_off;
 use warp::*;
 #[derive(Clone, Debug)]
 pub struct Client {
@@ -32,8 +36,9 @@ pub struct Client {
     pubkeys: Vec<(u32, RistrettoPoint)>,
     // Vehicle pubkey
     vehkey: RistrettoPoint,
+    // r:s
+    rs: Vec<Scalar>,
 }
-
 impl Client {
     pub async fn new(
         id: u32,
@@ -81,6 +86,7 @@ impl Client {
                 share: Scalar::zero(),
                 pubkeys: Vec::<(u32, RistrettoPoint)>::new(),
                 vehkey: RistrettoPoint::identity(),
+                rs: Vec::<Scalar>::new(),
             }
         } else {
             panic!("Cant build _client");
@@ -88,28 +94,71 @@ impl Client {
     }
     // Have not tested
     pub async fn send(&self, channel: String, msg: Message) -> String {
-        reqwest_send(
-            self._client.clone(),
-            self.central.clone(),
-            // "central:3030".to_string(),
-            channel,
-            msg,
-        )
-        .await
+        reqwest_send(self._client.clone(), self.central.clone(), channel, msg).await
     }
 
     // When received a keygen message from server then verify the share and store it together with pubkeys and group key
-    pub fn init(&mut self, setup_msg: Vec<String>) {
-        let (share, vehkey, pks) = (&setup_msg[0], &setup_msg[1], &setup_msg[2..]);
-        self.share = string_to_scalar(share).unwrap();
-        self.vehkey = string_to_point(vehkey).unwrap();
+    pub fn init(&mut self, mut setup_msg: Vec<String>) {
+        // Commitments from dealer
+        let index = setup_msg
+            .iter()
+            .position(|x| x == "big_bs")
+            .expect("Client-init: Cannot split big_bs");
+        let big_bs = setup_msg.split_off(index + 1);
+        setup_msg.pop();
+
+        // Individual public keys
+        let index = setup_msg
+            .iter()
+            .position(|x| x == "pks")
+            .expect("Client-init: Cannot split pks");
+        let pks = setup_msg.split_off(index + 1);
+        setup_msg.pop();
+
+        // Get vehicle's public key
+        let vehkey = setup_msg.pop().expect("Cannot pop group public key");
+        // Get ECU's secret share
+        let share = setup_msg.pop().expect("Cannot pop share");
+
+        self.share = string_to_scalar(&share).unwrap();
+        self.vehkey = string_to_point(&vehkey).unwrap();
         for pk in pks {
             let (id, pk) = pk.split_once(':').unwrap();
             let id = id.parse::<u32>().unwrap();
             let pk = string_to_point(pk).unwrap();
             self.pubkeys.push((id, pk));
         }
+        let mut ver_list = Vec::<RistrettoPoint>::new();
+        for big_b in big_bs {
+            let big_b = string_to_point(&big_b).unwrap();
+            ver_list.push(big_b);
+        }
+
+        //   Vec<(u32, RistrettoPoint)>, my_id: u32, share: Scalar, t: usize, n: usize,
+        (self.share, _) = share_ver(ver_list, self.id, self.share, 3, 4);
     }
+
+    // Generate nonce for a signing session
+    pub async fn nonce_generator(&mut self, v: u32) {
+        info!("Sent nonces to server");
+        let mut big_rs = Vec::<RistrettoPoint>::new();
+
+        (big_rs, self.rs) = sign_off(v);
+
+        let nonce_list = Message {
+            sender: self.id.clone().to_string(),
+            receiver: "central".to_string(),
+            msg_type: MsgType::Nonce,
+            msg: big_rs.iter().map(|big_r| point_to_string(*big_r)).collect(),
+        };
+
+        self.send("nonce".to_string(), nonce_list).await;
+    }
+
+    //SA -> ecu -> ge mig nya nonces
+    //ECU får meddelande -> generate nonce -> SA -> SA
+
+    //SA -> choose committee -> plockar ut big_r -> generate out -> skicka till ECUs samt meddelande, committee
 }
 
 async fn _serve(

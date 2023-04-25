@@ -1,5 +1,4 @@
-use std::ops::Index;
-use std::vec;
+use std::thread::spawn;
 
 /// ###################################################################
 /// Argument options
@@ -80,6 +79,7 @@ mod server;
 mod signing;
 
 // use client::run_client;
+use ::log::*;
 use client::Client;
 use helper::{point_to_string, scalar_to_string, Message, MsgType};
 use server::Server;
@@ -95,6 +95,7 @@ use tokio::time::{sleep, Duration};
 
 #[tokio::main]
 pub async fn main() {
+    env_logger::init();
     let args = App::parse();
 
     let (tx, mut rx) = unbounded_channel::<String>();
@@ -142,12 +143,20 @@ pub async fn main() {
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
-                            println!("Nonce type: {:?}", msg.msg);
-                            todo!("Add nonce for keygen");
+                            &my_server.nonce_handler(msg).await;
                         }
                         MsgType::Sign => {
-                            println!("Sign type: {:?}", msg.msg);
-                            todo!("Add sign for keygen");
+                            let mut input = String::new();
+                            info!("Nonces: {:?}", my_server.clone().nonces.len());
+
+                            if my_server.nonces.len() > 3 {
+                                // take terminal input for message
+                                println!("Enter message to sign: ");
+                                std::io::stdin()
+                                    .read_line(&mut input)
+                                    .expect("Failed to read line");
+                                my_server.clone().sign_msg(input, 3).await;
+                            }
                         }
                         MsgType::Update => {
                             println!("Update type: {:?}", msg.msg);
@@ -197,7 +206,7 @@ pub async fn main() {
                         MsgType::Keygen => {
                             // println!("KeyGen type: {:?}", msg.msg);
                             my_client.clone().init(msg.msg);
-
+                            my_client.clone().nonce_generator(2).await;
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
