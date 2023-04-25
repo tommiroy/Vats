@@ -21,7 +21,6 @@ enum Mode {
 
 #[derive(Args, Debug)]
 struct ServerOption {
-
     /// Identity of the server: cert + key
     #[arg(short('i'), long, default_value = "docker_x509/central/central.pem")]
     identity: String,
@@ -42,7 +41,7 @@ struct ServerOption {
 #[derive(Args, Debug)]
 struct ClientOption {
     #[arg(short('i'), long, default_value = "docker_x509/ecu1/ecu1.pem")]
-    id: u8,
+    id: u32,
 
     #[arg(short('e'), long, default_value = "docker_x509/ecu1/ecu1.pem")]
     identity: String,
@@ -59,7 +58,6 @@ struct ClientOption {
     #[arg(long("cport"), default_value = "3030")]
     central_port: String,
 
-    
     /// Server port
     #[arg(short('a'), long, default_value = "127.0.0.1")]
     addr: String,
@@ -78,7 +76,7 @@ use client::Client;
 use helper::{Message, MsgType};
 use server::Server;
 
-use tokio::sync::mpsc::unbounded_channel; 
+use tokio::sync::mpsc::unbounded_channel;
 use tokio::time::{sleep, Duration};
 // Testing only
 // use serde::{Deserialize, Serialize};
@@ -93,7 +91,12 @@ pub async fn network() {
     let (tx, mut rx) = unbounded_channel::<String>();
     match args.mode {
         // Start as a server
-        Mode::Server(ServerOption { identity, ca, addr, port }) => {
+        Mode::Server(ServerOption {
+            identity,
+            ca,
+            addr,
+            port,
+        }) => {
             let mut my_server = Server::new(identity, ca, addr, port, tx).await;
             my_server.add_client("ecu1:3031".to_string());
             my_server.add_client("ecu2:3032".to_string());
@@ -109,8 +112,12 @@ pub async fn network() {
                     // Match the message type and handle accordingly
                     match msg.msg_type {
                         MsgType::Keygen => {
-                            println!("KeyGen type:\n Sender: {}\n Message: {}", msg.sender, msg.msg);
-                            let res_broadcast = my_server.broadcast("keygen".to_string(), msg).await;
+                            println!(
+                                "KeyGen type:\n Sender: {}\n Message: {}",
+                                msg.sender, msg.msg
+                            );
+                            let res_broadcast =
+                                my_server.broadcast("keygen".to_string(), msg).await;
                             // println!("Response from broadcast: \n {:?}", res_broadcast);
                             // let test = my_server.send("ecu1:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
                             // println!("Status of sending message: \n {test:?}");
@@ -137,12 +144,21 @@ pub async fn network() {
         }
 
         // Start as a client
-        Mode::Client(ClientOption {id, identity, ca, central_addr, central_port, addr, port}) => {
-            let my_client = Client::new(id, identity, ca, addr, port, central_addr, central_port, tx).await;
+        Mode::Client(ClientOption {
+            id,
+            identity,
+            ca,
+            central_addr,
+            central_port,
+            addr,
+            port,
+        }) => {
+            let my_client =
+                Client::new(id, identity, ca, addr, port, central_addr, central_port, tx).await;
             // Testing purposes --------------------------------------------------
-            // let msg = Message {sender:"ecu1".to_string(), 
-            //                             receiver: "central".to_string(), 
-            //                             msg_type:MsgType::Keygen, 
+            // let msg = Message {sender:"ecu1".to_string(),
+            //                             receiver: "central".to_string(),
+            //                             msg_type:MsgType::Keygen,
             //                             msg: "This is ecu1 test".to_string()};
             // sleep(Duration::from_millis(500)).await;
             // let res = my_client.send("keygen".to_owned(), msg).await;
@@ -158,6 +174,7 @@ pub async fn network() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             println!("KeyGen type: {}", msg.msg);
+
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
@@ -178,10 +195,8 @@ pub async fn network() {
                     println!("Not of Message struct but hey: {msg:?}");
                 }
             }
-
         }
     }
-
 }
 
 // ###################################################################

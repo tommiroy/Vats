@@ -1,51 +1,51 @@
 #![allow(dead_code)]
+use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
+use crate::signing::share_ver::share_ver;
+use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
+use std::{collections::HashMap, net::SocketAddr};
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
-use std::{net::SocketAddr, collections::HashMap};
-use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
-
-
 #[derive(Clone, Debug)]
 pub struct Client {
     // Name of the node
-    id: u8,
-    // Certificate and key of this server
-    identity: String,
-    // CA of other nodes
-    ca: String,
-    // server address
-    addr: String,
-    // Port that this server runs on
-    port: String,
+    id: u32,
+    // // Certificate and key of this server
+    // identity: String,
+    // // CA of other nodes
+    // ca: String,
+    // // server address
+    // addr: String,
+    // // Port that this server runs on
+    // port: String,
+
     // Address of central server
     central: String,
     // clients:    HashMap<String, String>,
     _client: reqwest::Client,
     // Secret share
-    share: String,
+    share: Scalar,
     // Public keys: <ID, pubkey>
-    pubkeys: HashMap<u8, String>,
+    pubkeys: Vec<(u32, RistrettoPoint)>,
     // Vehicle pubkey
-    vehkey: String,
+    vehkey: RistrettoPoint,
 }
 
 impl Client {
     pub async fn new(
-        id: u8,
+        id: u32,
         identity: String,
         ca: String,
-        addr:String, 
+        addr: String,
         port: String,
         central_addr: String,
         central_port: String,
         tx: UnboundedSender<String>,
     ) -> Client {
-
         let _addr = addr.clone();
         let _port = port.clone();
         let _ca = ca.clone();
         let _identity = identity.clone();
-        
 
         tokio::spawn(async move {
             _serve(_identity, _ca, _addr, _port, tx).await;
@@ -71,27 +71,49 @@ impl Client {
             // Only return Server instance _client is built.
             let central = central_addr.to_owned() + ":" + &central_port;
             // Create and return an instance of Client
-            Self {id, identity, ca, addr, port, central, _client, share: "share".to_string(), pubkeys: HashMap::<u8, String>::new(), vehkey: "vehkey".to_string()}
+            Self {
+                id,
+                central,
+                _client,
+                share: Scalar::zero(),
+                pubkeys: Vec::<(u32, RistrettoPoint)>::new(),
+                vehkey: RistrettoPoint::identity(),
+            }
         } else {
             panic!("Cant build _client");
         }
     }
     // Have not tested
-    pub async fn send(&self, channel: String, msg: Message) -> String{
-        // reqwest_send(self._client.clone(), self.central.clone(),channel, msg).await
-        reqwest_send(self._client.clone(), "central:3030".to_string(),channel, msg).await
-
+    pub async fn send(&self, channel: String, msg: Message) -> String {
+        reqwest_send(
+            self._client.clone(),
+            self.central.clone(),
+            // "central:3030".to_string(),
+            channel,
+            msg,
+        )
+        .await
     }
 
-    pub async fn setup(&mut self, share: String, pubkeys: HashMap<u8, String>, vehkey: String) {
-        self.share = share; 
-        self.pubkeys = pubkeys;
-        self.vehkey = vehkey;
-
+    // When received a keygen message from server then verify the share and store it together with pubkeys and group key
+    pub async fn setup(
+        &mut self,
+        share: Scalar,
+        pubkeys: Vec<(u32, RistrettoPoint)>,
+        t: usize,
+        n: usize,
+    ) {
+        (self.share, self.pubkeys, self.vehkey) = share_ver(pubkeys, self.id, share, t, n)
     }
 }
 
-async fn _serve(identity: String, ca: String, addr:String, port: String, tx: UnboundedSender<String>) {
+async fn _serve(
+    identity: String,
+    ca: String,
+    addr: String,
+    port: String,
+    tx: UnboundedSender<String>,
+) {
     // Wrap the transmission channel into a Filter so that it can be included into warp_routes
     // Technicality thing
     let warp_tx = warp::any().map(move || tx.clone());
@@ -129,7 +151,7 @@ async fn _serve(identity: String, ca: String, addr:String, port: String, tx: Unb
         });
     // Serve the connection.
     // Will run in forever loop. There is a way to gracefully shutdown this. But nah for now.
-    if let Ok(socket) = (addr.to_owned()+":"+ &port).parse::<SocketAddr>() {
+    if let Ok(socket) = (addr.to_owned() + ":" + &port).parse::<SocketAddr>() {
         warp::serve(warp_routes)
             .tls()
             .key_path(identity.clone())

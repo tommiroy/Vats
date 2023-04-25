@@ -1,10 +1,11 @@
 use curve25519_dalek::scalar::Scalar;
 use rand::prelude::*;
 
-use vats::dealer;
+use crate::dealer;
 mod keyAgg;
 mod keyUpd;
 mod muSigCoef;
+pub mod share_ver;
 mod signAgg;
 mod signAgg2;
 mod signOff;
@@ -13,7 +14,6 @@ mod signOn;
 pub mod header;
 mod verification;
 use crate::signing::header::*;
-
 
 pub async fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Example usage
@@ -95,7 +95,7 @@ pub async fn thresholdsignature(t: usize, n: usize, v: u32) -> bool {
     // Check if reconstructed secret key is equal public key
     // assert_eq!(pk, &RISTRETTO_BASEPOINT_TABLE*&sk_prim, "Public key is not equal secret key");
 
-    keyUpd::key_upd(t , n, committee.signers[0].clone(), "hello").await;
+    keyUpd::key_upd(t, n, committee.signers[0].clone(), "hello").await;
     verification::ver(
         "Super mega error message".to_string(),
         pk,

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
+use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
+use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
-use std::net::SocketAddr;
-use super::helper::{get_identity, reqwest_read_cert, reqwest_send, Message};
 
 // #[derive(Clone, Deserialize, Debug, Serialize)]
 #[derive(Clone, Debug)]
@@ -25,11 +25,10 @@ impl Server {
     pub async fn new(
         identity: String,
         ca: String,
-        addr:String, 
+        addr: String,
         port: String,
         tx: UnboundedSender<String>,
     ) -> Server {
-
         let _addr = addr.clone();
         let _port = port.clone();
         let _ca = ca.clone();
@@ -57,7 +56,14 @@ impl Server {
             .build()
         {
             // Only return Server instance _client is built.
-            Self {identity, ca, addr, port, clients: Vec::<String>::new(), _client}
+            Self {
+                identity,
+                ca,
+                addr,
+                port,
+                clients: Vec::<String>::new(),
+                _client,
+            }
         } else {
             panic!("Cant build _client");
         }
@@ -78,9 +84,15 @@ impl Server {
             // println!("Sending message to {}: \n Response: {:?}", node, res);
         }
     }
-} 
+}
 
-async fn _serve(identity: String, ca: String, addr:String, port: String, tx: UnboundedSender<String>) {
+async fn _serve(
+    identity: String,
+    ca: String,
+    addr: String,
+    port: String,
+    tx: UnboundedSender<String>,
+) {
     // Wrap the transmission channel into a Filter so that it can be included into warp_routes
     // Technicality thing
     let warp_tx = warp::any().map(move || tx.clone());
@@ -118,7 +130,7 @@ async fn _serve(identity: String, ca: String, addr:String, port: String, tx: Unb
         });
     // Serve the connection.
     // Will run in forever loop. There is a way to gracefully shutdown this. But nah for now.
-    if let Ok(socket) = (addr.to_owned()+":"+ &port).parse::<SocketAddr>() {
+    if let Ok(socket) = (addr.to_owned() + ":" + &port).parse::<SocketAddr>() {
         warp::serve(warp_routes)
             .tls()
             .key_path(identity.clone())
