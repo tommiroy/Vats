@@ -23,7 +23,7 @@ pub async fn run_cmd_center(identity: String, ca: String, addr: String, port: St
         .build() {
             loop {
                 println!("Command options:\n    1. keygen\n    2. sign");
-                print!("Your command: ");
+                println!("Your command: ");
                 let stdin = BufReader::new(tokio::io::stdin());
                 let mut lines = stdin.lines();
                 if let Some(line) = lines.next_line().await.expect("No lines") {
@@ -37,8 +37,22 @@ pub async fn run_cmd_center(identity: String, ca: String, addr: String, port: St
                                 let ans = reqwest_send(client.clone(), addr.to_owned()+ ":" + &port, "keygen".to_string(), msg).await;
                                 println!("Answer from central: {ans:?}");
                             }
+                            2_u8 => {
+                                println!("Message to sign: ");
+                                let _stdin = BufReader::new(tokio::io::stdin());
+                                let mut _lines = _stdin.lines();
+                                if let Some(_line) = _lines.next_line().await.expect("No lines") {
+                                    let msg: Message = Message {sender: "command_center".to_string(),
+                                                                receiver: addr.clone(),
+                                                                msg_type: MsgType::Sign,
+                                                                msg: vec![_line]};
+                                    let ans = reqwest_send(client.clone(), addr.to_owned()+ ":" + &port, "sign".to_string(), msg).await;
+                                    println!("Answer from central: {ans:?}");
+                                }
+
+                            }
                             _ => {
-                                print!("Don't care")
+                                println!("Don't care")
                             }
 
                         }
