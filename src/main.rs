@@ -19,6 +19,8 @@ enum Mode {
     Server(ServerOption),
     /// Client mode
     Client(ClientOption),
+    /// Command center
+    Cmd(CmdCenterOption),
 }
 
 #[derive(Args, Debug)]
@@ -73,17 +75,39 @@ struct ClientOption {
     port: String,
 }
 
+
+#[derive(Args, Debug)]
+struct CmdCenterOption {
+    #[arg(short('e'), long, default_value = "docker_x509/central/central.pem")]
+    identity: String,
+
+    /// Certificate Authority path
+    #[arg(short('c'), long, default_value = "docker_x509/ca/ca.crt")]
+    ca: String,
+
+    /// server address
+    #[arg(short, long, default_value = "central")]
+    addr: String,
+
+    /// Central server port
+    #[arg(short, long, default_value = "3030")]
+    port: String,
+}
+
+
 mod client;
 mod helper;
 mod server;
 mod signing;
-
+mod cmd_center;
 // use client::run_client;
 use ::log::*;
 use client::Client;
 use helper::{point_to_string, scalar_to_string, Message, MsgType};
 use server::Server;
+use cmd_center::run_cmd_center;
 
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::time::{sleep, Duration};
 // Testing only
@@ -120,23 +144,27 @@ pub async fn main() {
             sleep(Duration::from_millis(500)).await;
 
             // deal out keys
-            my_server.clone().deal_shares(3, 4).await;
-
+            
+            
             loop {
                 let Some(msg) = rx.recv().await else {
                     panic!("Server::main: received message is not a string");
                 };
-
+                
                 if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
                     // Match the message type and handle accordingly
                     match msg.msg_type {
                         MsgType::Keygen => {
-                            println!(
-                                "KeyGen type:\n Sender: {}\n Message: {:?}",
-                                msg.sender, msg.msg
-                            );
-                            let res_broadcast =
-                                my_server.broadcast("keygen".to_string(), msg).await;
+                            info!("Got keygen cmd!!!! RUN!");
+                            my_server.clone().deal_shares(3, 4).await;
+
+                            // println!(
+                            //     "KeyGen type:\n Sender: {}\n Message: {:?}",
+                            //     msg.sender, msg.msg
+                            // );
+                            // let res_broadcast =
+                            //     my_server.broadcast("keygen".to_string(), msg).await;
+
                             // println!("Response from broadcast: \n {:?}", res_broadcast);
                             // let test = my_server.send("ecu1:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
                             // println!("Status of sending message: \n {test:?}");
@@ -228,6 +256,9 @@ pub async fn main() {
                 }
             }
         }
+        Mode::Cmd(CmdCenterOption {identity, ca, addr, port}) => {
+            run_cmd_center(identity, ca, addr, port).await;
+        }
     }
 }
 
@@ -237,3 +268,55 @@ pub async fn main() {
 
 // Server handle methods
 // User keydealer to generate keys and send each share to each participant
+
+async fn server_handler(mut my_server: Server, mut rx: UnboundedReceiver<String>) {
+    loop {
+        let Some(msg) = rx.recv().await else {
+            panic!("Server::main: received message is not a string");
+        };
+
+        if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
+            // Match the message type and handle accordingly
+            match msg.msg_type {
+                MsgType::Keygen => {
+                    println!(
+                        "KeyGen type:\n Sender: {}\n Message: {:?}",
+                        msg.sender, msg.msg
+                    );
+                    let res_broadcast =
+                        my_server.broadcast("keygen".to_string(), msg).await;
+                    // println!("Response from broadcast: \n {:?}", res_broadcast);
+                    // let test = my_server.send("ecu1:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
+                    // println!("Status of sending message: \n {test:?}");
+                    // todo!("Add handler for keygen");
+                }
+                MsgType::Nonce => {
+                    &my_server.nonce_handler(msg).await;
+                }
+                MsgType::Sign => {
+                    let mut input = String::new();
+                    info!("Nonces: {:?}", my_server.clone().nonces.len());
+
+                    if my_server.nonces.len() > 3 {
+                        // take terminal input for message
+                        println!("Enter message to sign: ");
+                        std::io::stdin()
+                            .read_line(&mut input)
+                            .expect("Failed to read line");
+                        my_server.clone().sign_msg(input, 3).await;
+                    }
+                }
+                MsgType::Update => {
+                    println!("Update type: {:?}", msg.msg);
+                    todo!("Add update for keygen");
+                }
+                _ => {
+                    println!("Placeholder")
+                }
+            }
+        } else {
+            // Just for debugging
+            println!("Not of Message struct but hey: {msg:?}");
+        }
+    }
+}

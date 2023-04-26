@@ -43,7 +43,7 @@ pub async fn get_identity(path: String) -> Identity {
 // ######################################################
 /// Message description
 // ######################################################
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Message {
     // Should have sender and receiver anyways
     pub sender: String,
@@ -54,7 +54,7 @@ pub struct Message {
 }
 
 // Different types of message sent over the network
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum MsgType {
     Keygen,
     Nonce,

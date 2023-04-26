@@ -1,0 +1,53 @@
+#![allow(dead_code)]
+use super::helper::*;
+use tokio::io::{AsyncReadExt, BufReader, AsyncBufReadExt};
+use tokio::runtime;
+
+pub async fn run_cmd_center(identity: String, ca: String, addr: String, port: String) {
+    // Build sending method for the server
+    // The reason for this is so that this is not done everytime the server sends messages to other nodes.
+    let _identity = get_identity(identity.clone()).await;
+    let _ca = reqwest_read_cert(ca.clone()).await;
+    // Build a client for message transmission
+    // Force using TLS
+    let _client = reqwest::Client::builder().use_rustls_tls();
+    if let Ok(client) = _client
+        // We use our own CA
+        .tls_built_in_root_certs(false)
+        // Receivers have to be verified by this CA
+        .add_root_certificate(_ca)
+        // Our identity verified by receivers
+        .identity(_identity)
+        // Force https
+        .https_only(true)
+        .build() {
+            loop {
+                println!("Command options:\n    1. keygen\n    2. sign");
+                print!("Your command: ");
+                let stdin = BufReader::new(tokio::io::stdin());
+                let mut lines = stdin.lines();
+                if let Some(line) = lines.next_line().await.expect("No lines") {
+                    if let Ok(selection) = line.parse::<u8>() {
+                        match selection {
+                            1_u8 => {
+                                let msg: Message = Message {sender: "command_center".to_string(),
+                                                            receiver: addr.clone(),
+                                                            msg_type: MsgType::Keygen,
+                                                            msg: vec!["Start share generation".to_owned()]};
+                                let ans = reqwest_send(client.clone(), addr.to_owned()+ ":" + &port, "keygen".to_string(), msg).await;
+                                println!("Answer from central: {ans:?}");
+                            }
+                            _ => {
+                                print!("Don't care")
+                            }
+
+                        }
+
+                    }
+                    
+                }
+            }
+
+    }
+
+}
