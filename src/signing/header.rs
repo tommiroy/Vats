@@ -2,7 +2,6 @@ use base64::{engine::general_purpose, Engine as _};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-
 use sha2::{Digest, Sha512};
 
 pub const RISTRETTO_POINT_SIZE_IN_BYTES: usize = 32;

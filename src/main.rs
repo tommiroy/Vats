@@ -174,17 +174,9 @@ pub async fn main() {
                             &my_server.nonce_handler(msg).await;
                         }
                         MsgType::Sign => {
-                            // info!("Nonces: {:?}", my_server.clone().nonces.len());
-
                              if my_server.nonces.len() > 3 {
-                            //     // take terminal input for message
-                            //     println!("Enter message to sign: ");
-                            //     std::io::stdin()
-                            //         .read_line(&mut input)
-                            //         .expect("Failed to read line");
                                  my_server.clone().sign_msg(msg.msg[0].clone(), 3).await;
                              }
-
 
                         }
                         MsgType::Update => {

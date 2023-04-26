@@ -49,10 +49,9 @@ pub async fn run_cmd_center(identity: String, ca: String, addr: String, port: St
                                     let ans = reqwest_send(client.clone(), addr.to_owned()+ ":" + &port, "sign".to_string(), msg).await;
                                     println!("Answer from central: {ans:?}");
                                 }
-
                             }
                             _ => {
-                                println!("Don't care")
+                                println!("Don't care");
                             }
 
                         }
