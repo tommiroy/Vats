@@ -32,6 +32,9 @@ pub struct Client {
     _client: reqwest::Client,
     // Secret share
     share: Scalar,
+    // Client public keys
+    pubkey: RistrettoPoint,
+
     // Public keys: <ID, pubkey>
     pubkeys: Vec<(u32, RistrettoPoint)>,
     // Vehicle pubkey
@@ -84,6 +87,7 @@ impl Client {
                 central,
                 _client,
                 share: Scalar::zero(),
+                pubkey: RistrettoPoint::identity(),
                 pubkeys: Vec::<(u32, RistrettoPoint)>::new(),
                 vehkey: RistrettoPoint::identity(),
                 rs: Vec::<Scalar>::new(),
@@ -135,7 +139,7 @@ impl Client {
         }
 
         //   Vec<(u32, RistrettoPoint)>, my_id: u32, share: Scalar, t: usize, n: usize,
-        (self.share, _) = share_ver(ver_list, self.id, self.share, 3, 4);
+        (self.share, self.pubkey) = share_ver(ver_list, self.id, self.share, 3, 4);
     }
 
     // Generate nonce for a signing session
@@ -154,6 +158,8 @@ impl Client {
 
         self.send("nonce".to_string(), nonce_list).await;
     }
+
+    pub asyn
 
     //SA -> ecu -> ge mig nya nonces
     //ECU får meddelande -> generate nonce -> SA -> SA
