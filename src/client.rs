@@ -1,15 +1,18 @@
 #![allow(dead_code)]
 #![warn(clippy::too_many_arguments)]
 
+use crate::signing::signOn::sign_on;
+
 use super::util::*;
 // use crate::signing::share_ver::share_ver;
+use super::signing::share_ver::share_ver;
+use super::signing::signOff::sign_off;
 use ::log::*;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
-use vats::signing::share_ver::share_ver;
-use vats::signing::signOff::sign_off;
 use warp::*;
 
 #[derive(Clone, Debug)]
@@ -23,12 +26,11 @@ pub struct Client {
     // Secret share
     share: Scalar,
     // Client public keys
-    pubkey: RistrettoPoint,
-
+    pub pubkey: RistrettoPoint,
     // Public keys: <ID, pubkey>
-    pubkeys: Vec<(u32, RistrettoPoint)>,
+    pub pubkeys: HashMap<u32, RistrettoPoint>,
     // Vehicle pubkey
-    vehkey: RistrettoPoint,
+    pub vehkey: RistrettoPoint,
     // r:s
     rs: Vec<Scalar>,
 }
@@ -78,13 +80,16 @@ impl Client {
                 _client,
                 share: Scalar::zero(),
                 pubkey: RistrettoPoint::identity(),
-                pubkeys: Vec::<(u32, RistrettoPoint)>::new(),
+                pubkeys: HashMap::<u32, RistrettoPoint>::new(),
                 vehkey: RistrettoPoint::identity(),
                 rs: Vec::<Scalar>::new(),
             }
         } else {
             panic!("Cant build _client");
         }
+    }
+    pub fn get_share(&self) -> Scalar {
+        self.share
     }
     // Have not tested
     pub async fn send(&self, channel: String, msg: Message) -> String {
@@ -120,7 +125,7 @@ impl Client {
             let (id, pk) = pk.split_once(':').unwrap();
             let id = id.parse::<u32>().unwrap();
             let pk = string_to_point(pk).unwrap();
-            self.pubkeys.push((id, pk));
+            self.pubkeys.insert(id, pk);
         }
         let mut ver_list = Vec::<RistrettoPoint>::new();
         for big_b in big_bs {
@@ -149,10 +154,21 @@ impl Client {
         self.send("nonce".to_string(), nonce_list).await;
     }
 
-    //SA -> ecu -> ge mig nya nonces
-    //ECU får meddelande -> generate nonce -> SA -> SA
+    //  Sign messages
+    pub async fn sign_msg(self, msg: Vec<String>) {
+        let com_ids: Vec<u32> = msg[0]
+            .split(",")
+            .map(|id| id.parse::<u32>().unwrap())
+            .collect::<Vec<u32>>();
+        info!("Committee to sign: {:?}", com);
 
-    //SA -> choose committee -> plockar ut big_r -> generate out -> skicka till ECUs samt meddelande, committee
+        let id in com_ids {
+            
+        }
+        let msg_to_sign = msg[1];
+        let out: Vec<String> = msg[2..].to_owned();
+        sign_on(self, self.rs, out, msg, signers);
+    }
 }
 
 async fn _serve(

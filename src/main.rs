@@ -172,7 +172,7 @@ pub async fn main() {
                         }
                         MsgType::Sign => {
                             if my_server.nonces.len() > 3 {
-                                my_server.clone().sign_msg(msg.msg[0].clone(), 3).await;
+                                my_server.clone().sign_request(msg.msg[0].clone(), 3).await;
                             }
                         }
                         MsgType::Update => {
@@ -212,6 +212,7 @@ pub async fn main() {
             // let res = my_client.send("keygen".to_owned(), msg).await;
             // println!("{res:?}");
             // -------------------------------------------------------------------
+
             loop {
                 let Some(msg) = rx.recv().await else {
                     panic!("Server::main: received message is not a string");
@@ -231,8 +232,9 @@ pub async fn main() {
                             // todo!("Add nonce for keygen");
                         }
                         MsgType::Sign => {
-                            println!("Sign type: {:?}", msg.msg);
-                            // todo!("Add sign for keygen");
+                            my_client.clone().sign_msg(msg.msg[0].clone()).await;
+                            // println!("Sign type: {:?}", msg.msg);
+                            // // todo!("Add sign for keygen");
                         }
                         MsgType::Update => {
                             println!("Update type: {:?}", msg.msg);
@@ -296,7 +298,7 @@ async fn server_handler(mut my_server: Server, mut rx: UnboundedReceiver<String>
                         std::io::stdin()
                             .read_line(&mut input)
                             .expect("Failed to read line");
-                        my_server.clone().sign_msg(input, 3).await;
+                        my_server.clone().sign_request(input, 3).await;
                     }
                 }
                 MsgType::Update => {

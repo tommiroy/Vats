@@ -1,3 +1,4 @@
+pub mod client;
 pub mod signing;
 pub mod util;
 // the public interface of the library

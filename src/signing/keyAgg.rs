@@ -15,20 +15,20 @@ pub fn key_agg(committee: Committee) -> Result<RistrettoPoint, &'static str> {
 
     let mut rho = Vec::<Scalar>::new();
     // for i in 0..L.len() { $\rho_i = MuSigCoef(L,Y_i)$ }S
-    for y in committee.signers.iter() {
-        rho.push(musig_coef(committee.clone(), y.public_key.key));
+    for (_, &big_y) in committee.signers.iter() {
+        rho.push(musig_coef(committee.clone(), big_y));
     }
     let mut tilde_y = RistrettoPoint::identity();
 
     // $\widetilde{Y} : =  \prod^n_{i=1} \ Y_i^{\rho_{i} \lambda_i}$ where $\lambda_i$ is the Lagrange coefficient of $Y_i$
     // this enables us to verify that the share is part of the signing committee
-    for (i, x) in committee.signers.iter().enumerate() {
-        let lagrange_coefficient = compute_lagrange_coefficient(committee.clone(), x.id);
+    for (i, (&x, &big_y)) in committee.signers.iter().enumerate() {
+        let lagrange_coefficient = compute_lagrange_coefficient(committee.clone(), x);
         if lagrange_coefficient == Scalar::zero() {
             return Err("The Lagrange coefficient cannot be zero");
         }
         // tilde_y += x.public_key.key * rho[i] * lagrange_coefficient;
-        tilde_y += x.public_key.key * rho[i]
+        tilde_y += big_y * rho[i]
     }
     Ok(tilde_y)
 }

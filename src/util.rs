@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use base64::{engine::general_purpose, Engine as _};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
@@ -9,6 +11,8 @@ use tokio::io::AsyncReadExt;
 
 pub const RISTRETTO_POINT_SIZE_IN_BYTES: usize = 32;
 use sha2::{Digest, Sha512};
+
+use crate::client::Client;
 
 /// ######################################################
 /// Read certificates for sending HTTPS request - reqwest
@@ -157,15 +161,6 @@ fn to_bytes32_slice(barry: &[u8]) -> Result<&[u8; 32], &'static str> {
 }
 
 // ########################### OLD HEADER ##################################
-// use base64::{engine::general_purpose, Engine as _};
-// use curve25519_dalek::ristretto::CompressedRistretto;
-// use curve25519_dalek::ristretto::RistrettoPoint;
-// use curve25519_dalek::scalar::Scalar;
-// use sha2::{Digest, Sha512};
-
-// pub const RISTRETTO_POINT_SIZE_IN_BYTES: usize = 32;
-
-// use super::super::helper;
 
 #[derive(Clone)]
 pub struct PrivateKey {
@@ -200,51 +195,49 @@ impl PublicKey {
 // Committee struct to hold all participants in the committee
 #[derive(Clone)]
 pub struct Committee {
-    // List of all participants in the committee
-    pub signers: Vec<Signer>,
-    // The committee's public key: Y tilde
-    pub public_key: RistrettoPoint,
+    pub signers: HashMap<u32, RistrettoPoint>,
+    pub tilde_y: RistrettoPoint,
 }
 
-impl Committee {
-    pub fn new(signers: Vec<Signer>) -> Committee {
-        Committee {
-            signers,
-            public_key: RistrettoPoint::default(),
-        }
-    }
+// impl Committee {
+//     pub fn new(signers: Vec<Signer>) -> Committee {
+//         Committee {
+//             signers,
+//             public_key: RistrettoPoint::default(),
+//         }
+//     }
 
-    pub fn set_public_key(&mut self, key: RistrettoPoint) {
-        self.public_key = key;
-    }
-}
+//     pub fn set_public_key(&mut self, key: RistrettoPoint) {
+//         self.public_key = key;
+//     }
+// }
 
 // Participant struct to hold possible signers of the message
 // Each participant has a private key and a public key associated with it
-#[derive(Clone)]
-pub struct Signer {
-    pub id: u32,
-    pub private_key: PrivateKey,
-    pub public_key: PublicKey,
-}
+// #[derive(Clone)]
+// pub struct commitee_members {
+//     pub id: u32,
+//     pub private_key: PrivateKey,
+//     pub public_key: PublicKey,
+// }
 
-impl Signer {
-    pub fn new(id: u32, private_key: PrivateKey, public_key: PublicKey) -> Signer {
-        Signer {
-            id,
-            private_key,
-            public_key,
-        }
-    }
-}
+// impl Signer {
+//     pub fn new(id: u32, private_key: PrivateKey, public_key: PublicKey) -> Signer {
+//         Signer {
+//             id,
+//             private_key,
+//             public_key,
+//         }
+//     }
+// }
 
 // #################### Hash Coefficient ###########################
 pub fn musig_coef(com: Committee, big_y: RistrettoPoint) -> Scalar {
     let mut hasher = Sha512::new();
     // Go through every participant in the committee.
     // Get the public key and add it to the hash
-    for participant in com.signers {
-        hasher.update(participant.public_key.key.compress().as_bytes());
+    for (_, big_y) in com.signers {
+        hasher.update(big_y.compress().as_bytes());
     }
     // Add participant own public key
     hasher.update(big_y.compress().as_bytes());
@@ -276,11 +269,11 @@ pub fn hash_sig(tilde_y: RistrettoPoint, big_r: RistrettoPoint, m: String) -> Sc
 }
 // #################### Hash Nonce ###########################
 
-pub fn hash_non(com: Committee, outs: Vec<RistrettoPoint>, m: String) -> Scalar {
+pub fn hash_non(vehkey: RistrettoPoint, outs: Vec<RistrettoPoint>, m: String) -> Scalar {
     let mut hasher = Sha512::new();
     // hash $b:= H_{non}(\widetilde{Y},(R_1,...,R_v),m)$
 
-    hasher.update(com.public_key.compress().as_bytes());
+    hasher.update(vehkey.compress().as_bytes());
 
     for out in outs.iter() {
         hasher.update(out.compress().as_bytes());
@@ -332,9 +325,9 @@ pub fn compute_lagrange_coefficient(committee: Committee, x0: u32) -> Scalar {
 
     // Standard lagrange coefficient calculation
     // https://en.wikipedia.org/wiki/Lagrange_polynomial
-    for x1 in committee.signers.iter() {
-        if x1.id != x0 {
-            let calc = Scalar::from(x1.id) * (Scalar::from(x1.id) - Scalar::from(x0)).invert();
+    for (&x, _) in committee.signers.iter() {
+        if x != x0 {
+            let calc = Scalar::from(x) * (Scalar::from(x) - Scalar::from(x0)).invert();
             lagrange_coefficient *= calc;
         }
     }

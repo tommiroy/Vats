@@ -8,8 +8,8 @@ pub fn musig_coef(committee: Committee, big_y: RistrettoPoint) -> Scalar {
     let mut hasher = Sha512::new();
     // Go through every participant in the committee.
     // Get the public key and add it to the hash
-    for participant in committee.signers {
-        hasher.update(participant.public_key.key.compress().as_bytes());
+    for (_, big_y) in committee.signers {
+        hasher.update(big_y.compress().as_bytes());
     }
     // Add participant own public key
     hasher.update(big_y.compress().as_bytes());

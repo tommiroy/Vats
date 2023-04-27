@@ -5,9 +5,10 @@ use curve25519_dalek::scalar::Scalar;
 
 use rand::rngs::OsRng;
 
+use super::super::client::Client;
 use super::super::util::*;
 
-pub async fn key_upd(t: usize, n: usize, signer: Signer, context: &str)
+pub async fn key_upd(t: usize, n: usize, signer: Client, context: &str)
 // -> (
 //     Vec<(u32, Scalar)>,
 //     Vec<(u32, RistrettoPoint)>,
@@ -19,7 +20,7 @@ pub async fn key_upd(t: usize, n: usize, signer: Signer, context: &str)
 
     // Dealer samples t random values t-1 a   ----> t = 3
     let mut a: Vec<Scalar> = Vec::with_capacity(t);
-    a.push(signer.private_key.get_key());
+    a.push(signer.get_share());
     for _ in 1..t {
         a.push(Scalar::random(&mut rng));
     }
@@ -31,7 +32,7 @@ pub async fn key_upd(t: usize, n: usize, signer: Signer, context: &str)
 
     let mut shares = Vec::with_capacity(t);
     for i in 1..n + 1 {
-        let mut share = signer.private_key.get_key();
+        let mut share = signer.get_share();
         for j in 1..t {
             share += a[j] * scalar_pow(Scalar::from(i as u32), j as u32);
         }
@@ -130,12 +131,12 @@ pub async fn key_upd(t: usize, n: usize, signer: Signer, context: &str)
     // (shares, pks, pk, a[0])
 }
 
-fn verify_sigma(sender: Signer, sigma: (RistrettoPoint, Scalar), context_string: String) -> bool {
+fn verify_sigma(sender: Client, sigma: (RistrettoPoint, Scalar), context_string: String) -> bool {
     let (big_r, mu) = sigma;
-    let c = hash_key(sender.id, context_string, sender.public_key.key, big_r);
+    let c = hash_key(sender.id, context_string, sender.pubkey, big_r);
     assert_eq!(
         big_r,
-        &RISTRETTO_BASEPOINT_TABLE * &mu + sender.public_key.key * c.invert(),
+        &RISTRETTO_BASEPOINT_TABLE * &mu + sender.pubkey * c.invert(),
         "sigma is wrong in keyUpd"
     );
     true
