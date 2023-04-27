@@ -193,19 +193,20 @@ impl PublicKey {
 }
 
 // Committee struct to hold all participants in the committee
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Committee {
     pub signers: HashMap<u32, RistrettoPoint>,
     pub tilde_y: RistrettoPoint,
 }
 
-// impl Committee {
-//     pub fn new(signers: Vec<Signer>) -> Committee {
-//         Committee {
-//             signers,
-//             public_key: RistrettoPoint::default(),
-//         }
-//     }
+impl Committee {
+    pub fn new(signers: HashMap<u32, RistrettoPoint>) -> Committee {
+        Committee {
+            signers,
+            tilde_y: RistrettoPoint::default(),
+        }
+    }
+}
 
 //     pub fn set_public_key(&mut self, key: RistrettoPoint) {
 //         self.public_key = key;

@@ -160,14 +160,41 @@ impl Client {
             .split(",")
             .map(|id| id.parse::<u32>().unwrap())
             .collect::<Vec<u32>>();
-        info!("Committee to sign: {:?}", com);
-
-        let id in com_ids {
-            
+        // match these commitee ids with the keys in publickeys hasmap and create a committee
+        info!("Committee to sign: {:?}", com_ids.clone());
+        let mut com = HashMap::<u32, RistrettoPoint>::new();
+        for i in com_ids {
+            if self.pubkeys.contains_key(&i) {
+                com.insert(i, self.pubkeys[&i]);
+            }
         }
-        let msg_to_sign = msg[1];
-        let out: Vec<String> = msg[2..].to_owned();
-        sign_on(self, self.rs, out, msg, signers);
+        let committee = Committee::new(com);
+        // info!("Committee: {:?}", committee.clone());
+        // info!("pubkeys: {:?}", self.pubkeys);
+        let msg_to_sign = &msg[1];
+
+        let out = msg[2..]
+            .iter()
+            .map(|x| string_to_point(x).unwrap())
+            .collect::<Vec<RistrettoPoint>>();
+        let (big_r, z) = sign_on(
+            self.clone(),
+            self.clone().rs,
+            out,
+            msg_to_sign.to_owned(),
+            committee,
+        );
+        info!(
+            "Individual signature: {:?}",
+            (point_to_string(big_r), scalar_to_string(&z))
+        );
+        let sig_msg = Message {
+            sender: self.id.to_string(),
+            receiver: "central".to_string(),
+            msg_type: MsgType::Sign,
+            msg: vec![point_to_string(big_r), scalar_to_string(&z)],
+        };
+        // self.send("sign".to_string(), sig_msg).await;
     }
 }
 

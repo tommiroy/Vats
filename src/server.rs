@@ -4,8 +4,7 @@ use crate::signing::key_dealer::dealer;
 use crate::signing::signAgg::sign_agg;
 
 use ::log::info;
-use flume::r#async;
-// use flume::r#async;
+
 use curve25519_dalek::ristretto::RistrettoPoint;
 use rand::prelude::*;
 use serde_json::to_string;
@@ -157,7 +156,7 @@ impl Server {
                 .collect(),
         );
     }
-    pub async fn sign_msg(self, message: String, t: usize) {
+    pub async fn sign_request(self, message: String, t: usize) {
         let mut committee: Vec<u32> = self.nonces.clone().into_keys().collect();
         let mut rng = rand::thread_rng();
         committee.shuffle(&mut rng);
@@ -175,18 +174,26 @@ impl Server {
             );
         }
 
-        let _out = sign_agg(outs, 2);
+        let agg_list = sign_agg(outs, 2);
         // Put out and message into a message a string vector
-        let mut out = Vec::<String>::new();
-        out.push(message.clone());
-        let _: Vec<_> = _out.iter().map(|r| out.push(point_to_string(*r))).collect();
+        let mut msg = Vec::<String>::new();
+        let _committee = committee
+            .iter()
+            .map(|x: &u32| x.to_string() + ",")
+            .collect::<String>();
 
+        msg.push(_committee.trim_end_matches(',').to_string());
+        msg.push(message.clone());
+        let _: Vec<_> = agg_list
+            .iter()
+            .map(|r| msg.push(point_to_string(*r)))
+            .collect();
         for i in committee.clone().into_iter() {
             let sign_req = Message {
                 sender: self.id.clone(),
                 receiver: i.to_string(),
-                msg_type: MsgType::Keygen,
-                msg: out.clone(),
+                msg_type: MsgType::Sign,
+                msg: msg.clone(),
             };
 
             info!(
@@ -195,8 +202,12 @@ impl Server {
                 committee, sign_req.msg
             );
 
-            self.send(i.to_string(), "sign_req".to_owned(), sign_req)
-                .await;
+            self.send(
+                self.clients[(i - 1) as usize].clone(),
+                "sign".to_owned(),
+                sign_req,
+            )
+            .await;
         }
     }
 }

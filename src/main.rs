@@ -201,7 +201,7 @@ pub async fn main() {
             addr,
             port,
         }) => {
-            let my_client =
+            let mut my_client =
                 Client::new(id, identity, ca, addr, port, central_addr, central_port, tx).await;
             // Testing purposes --------------------------------------------------
             // let msg = Message {sender:"ecu1".to_string(),
@@ -223,8 +223,8 @@ pub async fn main() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             // println!("KeyGen type: {:?}", msg.msg);
-                            my_client.clone().init(msg.msg);
-                            my_client.clone().nonce_generator(2).await;
+                            &my_client.init(msg.msg);
+                            &my_client.nonce_generator(2).await;
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
@@ -232,7 +232,7 @@ pub async fn main() {
                             // todo!("Add nonce for keygen");
                         }
                         MsgType::Sign => {
-                            my_client.clone().sign_msg(msg.msg[0].clone()).await;
+                            &my_client.clone().sign_msg(msg.msg).await;
                             // println!("Sign type: {:?}", msg.msg);
                             // // todo!("Add sign for keygen");
                         }
@@ -261,57 +261,3 @@ pub async fn main() {
 // ###################################################################
 // cargo run client -i /home/ab000668/thesis/implementation/Vats/local_x509/client/client.pem -c /home/ab000668/thesis/implementation/Vats/local_x509/ca/ca.crt -a 127.0.0.1 -p 3031 --caddr client --cport 3030
 // cargo run server -i /home/ab000668/thesis/implementation/Vats/local_x509/server/server.pem -c /home/ab000668/thesis/implementation/Vats/local_x509/ca/ca.crt -a 127.0.0.1 -p 3030
-
-// Server handle methods
-// User keydealer to generate keys and send each share to each participant
-
-async fn server_handler(mut my_server: Server, mut rx: UnboundedReceiver<String>) {
-    loop {
-        let Some(msg) = rx.recv().await else {
-            panic!("Server::main: received message is not a string");
-        };
-
-        if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
-            // Match the message type and handle accordingly
-            match msg.msg_type {
-                MsgType::Keygen => {
-                    println!(
-                        "KeyGen type:\n Sender: {}\n Message: {:?}",
-                        msg.sender, msg.msg
-                    );
-                    let res_broadcast = my_server.broadcast("keygen".to_string(), msg).await;
-                    // println!("Response from broadcast: \n {:?}", res_broadcast);
-                    // let test = my_server.send("ecu1:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
-                    // println!("Status of sending message: \n {test:?}");
-                    // todo!("Add handler for keygen");
-                }
-                MsgType::Nonce => {
-                    &my_server.nonce_handler(msg).await;
-                }
-                MsgType::Sign => {
-                    let mut input = String::new();
-                    info!("Nonces: {:?}", my_server.clone().nonces.len());
-
-                    if my_server.nonces.len() > 3 {
-                        // take terminal input for message
-                        println!("Enter message to sign: ");
-                        std::io::stdin()
-                            .read_line(&mut input)
-                            .expect("Failed to read line");
-                        my_server.clone().sign_request(input, 3).await;
-                    }
-                }
-                MsgType::Update => {
-                    println!("Update type: {:?}", msg.msg);
-                    todo!("Add update for keygen");
-                }
-                _ => {
-                    println!("Placeholder")
-                }
-            }
-        } else {
-            // Just for debugging
-            println!("Not of Message struct but hey: {msg:?}");
-        }
-    }
-}
