@@ -1,31 +1,21 @@
 #![allow(dead_code)]
 #![warn(clippy::too_many_arguments)]
 
-use crate::signing::header::Signer;
-
-use super::helper::*;
+use super::util::*;
 // use crate::signing::share_ver::share_ver;
 use ::log::*;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
-use std::{collections::HashMap, net::SocketAddr};
+use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
 use vats::signing::share_ver::share_ver;
 use vats::signing::signOff::sign_off;
 use warp::*;
+
 #[derive(Clone, Debug)]
 pub struct Client {
     // Name of the node
     pub id: u32,
-    // // Certificate and key of this server
-    // identity: String,
-    // // CA of other nodes
-    // ca: String,
-    // // server address
-    // addr: String,
-    // // Port that this server runs on
-    // port: String,
-
     // Address of central server
     central: String,
     // clients:    HashMap<String, String>,
@@ -158,8 +148,6 @@ impl Client {
 
         self.send("nonce".to_string(), nonce_list).await;
     }
-
-    pub asyn
 
     //SA -> ecu -> ge mig nya nonces
     //ECU får meddelande -> generate nonce -> SA -> SA

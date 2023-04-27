@@ -2,7 +2,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use sha2::{Digest, Sha512};
 
-use super::header::Committee;
+use super::super::util::Committee;
 
 pub fn musig_coef(committee: Committee, big_y: RistrettoPoint) -> Scalar {
     let mut hasher = Sha512::new();

@@ -2,7 +2,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
-use super::header::*;
+use super::super::util::*;
 
 use crate::signing::keyAgg::key_agg;
 use crate::signing::muSigCoef::musig_coef;

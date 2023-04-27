@@ -75,7 +75,6 @@ struct ClientOption {
     port: String,
 }
 
-
 #[derive(Args, Debug)]
 struct CmdCenterOption {
     #[arg(short('e'), long, default_value = "docker_x509/central/central.pem")]
@@ -94,21 +93,20 @@ struct CmdCenterOption {
     port: String,
 }
 
-
 mod client;
-mod helper;
+mod cmd_center;
 mod server;
 mod signing;
-mod cmd_center;
+mod util;
 // use client::run_client;
 use ::log::*;
 use client::Client;
-use helper::{point_to_string, scalar_to_string, Message, MsgType};
-use server::Server;
 use cmd_center::run_cmd_center;
+use server::Server;
+use util::{point_to_string, scalar_to_string, Message, MsgType};
 
-use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::{sleep, Duration};
 // Testing only
 // use serde::{Deserialize, Serialize};
@@ -144,13 +142,12 @@ pub async fn main() {
             sleep(Duration::from_millis(500)).await;
 
             // deal out keys
-            
-            
+
             loop {
                 let Some(msg) = rx.recv().await else {
                     panic!("Server::main: received message is not a string");
                 };
-                
+
                 if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
                     // Match the message type and handle accordingly
                     match msg.msg_type {
@@ -174,10 +171,9 @@ pub async fn main() {
                             &my_server.nonce_handler(msg).await;
                         }
                         MsgType::Sign => {
-                             if my_server.nonces.len() > 3 {
-                                 my_server.clone().sign_msg(msg.msg[0].clone(), 3).await;
-                             }
-
+                            if my_server.nonces.len() > 3 {
+                                my_server.clone().sign_msg(msg.msg[0].clone(), 3).await;
+                            }
                         }
                         MsgType::Update => {
                             println!("Update type: {:?}", msg.msg);
@@ -249,7 +245,12 @@ pub async fn main() {
                 }
             }
         }
-        Mode::Cmd(CmdCenterOption {identity, ca, addr, port}) => {
+        Mode::Cmd(CmdCenterOption {
+            identity,
+            ca,
+            addr,
+            port,
+        }) => {
             run_cmd_center(identity, ca, addr, port).await;
         }
     }
@@ -276,8 +277,7 @@ async fn server_handler(mut my_server: Server, mut rx: UnboundedReceiver<String>
                         "KeyGen type:\n Sender: {}\n Message: {:?}",
                         msg.sender, msg.msg
                     );
-                    let res_broadcast =
-                        my_server.broadcast("keygen".to_string(), msg).await;
+                    let res_broadcast = my_server.broadcast("keygen".to_string(), msg).await;
                     // println!("Response from broadcast: \n {:?}", res_broadcast);
                     // let test = my_server.send("ecu1:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
                     // println!("Status of sending message: \n {test:?}");

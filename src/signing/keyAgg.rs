@@ -2,7 +2,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
-use super::header::{compute_lagrange_coefficient, Committee};
+use super::super::util::{compute_lagrange_coefficient, Committee};
 use super::muSigCoef::musig_coef;
 
 // S is signing committee members public keys
@@ -29,7 +29,6 @@ pub fn key_agg(committee: Committee) -> Result<RistrettoPoint, &'static str> {
         }
         // tilde_y += x.public_key.key * rho[i] * lagrange_coefficient;
         tilde_y += x.public_key.key * rho[i]
-
     }
     Ok(tilde_y)
 }

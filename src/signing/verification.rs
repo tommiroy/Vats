@@ -2,7 +2,7 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
-use super::header::*;
+use super::super::util::{hash_sig, Committee};
 use super::keyAgg::key_agg;
 
 pub fn ver(
@@ -16,7 +16,7 @@ pub fn ver(
 
     let tilde_y = key_agg(committee).unwrap();
 
-    let rhs = (tilde_y + big_y)* c + signature.0;
+    let rhs = (tilde_y + big_y) * c + signature.0;
 
     let lhs = &RISTRETTO_BASEPOINT_TABLE * &signature.1;
     if lhs == rhs {

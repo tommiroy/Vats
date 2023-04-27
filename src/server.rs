@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use super::helper::*;
+use super::util::*;
 use crate::signing::key_dealer::dealer;
 use crate::signing::signAgg::sign_agg;
 

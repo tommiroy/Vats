@@ -5,7 +5,7 @@ use curve25519_dalek::scalar::Scalar;
 
 use rand::rngs::OsRng;
 
-use super::header::*;
+use super::super::util::*;
 
 pub async fn key_upd(t: usize, n: usize, signer: Signer, context: &str)
 // -> (
