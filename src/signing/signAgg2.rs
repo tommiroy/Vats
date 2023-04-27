@@ -1,7 +1,7 @@
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 
-use super::super::util::Committee;
-use super::muSigCoef::musig_coef;
+use super::super::util::{Committee, musig_coef};
+// use super::muSigCoef::musig_coef;
 
 pub fn signAgg2(out_prim: Vec<Scalar>, committee: Committee) -> Scalar {
     // let mut z = Scalar::zero();

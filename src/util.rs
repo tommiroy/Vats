@@ -237,8 +237,18 @@ pub fn musig_coef(com: Committee, big_y: RistrettoPoint) -> Scalar {
     let mut hasher = Sha512::new();
     // Go through every participant in the committee.
     // Get the public key and add it to the hash
-    for (_, big_y) in com.signers {
-        hasher.update(big_y.compress().as_bytes());
+
+    let mut keys: Vec<_> = com.signers.iter().collect();
+    keys.sort_by_key(|signer| signer.0);
+
+    println!("Musig_coef: ");
+    for key in keys.iter() {
+        println!("{} ",key.0);
+    }
+
+
+    for (&key,&big_r) in keys {
+        hasher.update(big_r.compress().as_bytes());
     }
     // Add participant own public key
     hasher.update(big_y.compress().as_bytes());
