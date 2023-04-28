@@ -2,10 +2,13 @@
 use super::util::*;
 use crate::signing::key_dealer::dealer;
 use crate::signing::signAgg::sign_agg;
+use crate::signing::*;
 
 use ::log::info;
 
 use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
+
 use rand::prelude::*;
 use serde_json::to_string;
 use std::collections::HashMap;
@@ -28,8 +31,14 @@ pub struct Server {
     pub clients: Vec<String>,
     // clients:    HashMap<String, String>,
     _client: reqwest::Client,
+    // Public keys: <ID, pubkey>
+    pub pubkeys: HashMap<u32, RistrettoPoint>,
     // List of nonces from signoff
     pub nonces: HashMap<u32, Vec<RistrettoPoint>>,
+    // Signing committee members
+    pub committee: HashMap<u32, RistrettoPoint>,
+    // Partial signatures
+    pub partial_sigs: HashMap<u32, (RistrettoPoint, Scalar)>,
 }
 
 impl Server {
@@ -76,7 +85,10 @@ impl Server {
                 // port,
                 clients: Vec::<String>::new(),
                 _client,
+                pubkeys: HashMap::<u32, RistrettoPoint>::new(),
                 nonces: HashMap::<u32, Vec<RistrettoPoint>>::new(),
+                committee: HashMap::<u32, RistrettoPoint>::new(),
+                partial_sigs: HashMap::<u32, (RistrettoPoint, Scalar)>::new(),
             }
         } else {
             panic!("Cant build _client");
@@ -99,9 +111,14 @@ impl Server {
         }
     }
 
-    pub async fn deal_shares(self, t: usize, n: usize) {
+    pub async fn deal_shares(mut self, t: usize, n: usize) {
         // Generate keys
         let (sks, pks, group_pk, _, big_b) = dealer(t, n);
+
+        pks.iter().for_each(|pk| {
+            self.pubkeys.insert(pk.0, pk.1);
+        });
+
         for (id, node) in self.clients.clone().into_iter().enumerate() {
             // Send each share to each participant
             // node.send()
@@ -156,15 +173,22 @@ impl Server {
                 .collect(),
         );
     }
-    pub async fn sign_request(self, message: String, t: usize) {
+    pub async fn sign_request(mut self, message: String, t: usize) {
+        // select a random committee
         let mut committee: Vec<u32> = self.nonces.clone().into_keys().collect();
         let mut rng = rand::thread_rng();
         committee.shuffle(&mut rng);
         let committee: Vec<u32> = committee.into_iter().take(t).collect();
 
         let mut outs = Vec::<Vec<RistrettoPoint>>::new();
-        // let temp_nonces: HashMap<u32, Vec<RistrettoPoint>> = self.nonces.clone();
 
+        // Store the committee
+        for i in committee.clone() {
+            if self.pubkeys.contains_key(&i) {
+                self.committee.insert(i, self.pubkeys[&i]);
+            }
+        }
+        // Store the nonces
         for id in committee.clone() {
             outs.push(
                 self.nonces
@@ -173,7 +197,7 @@ impl Server {
                     .to_vec(),
             );
         }
-
+        // Aggregate the nonces
         let agg_list = sign_agg(outs, 2);
         // Put out and message into a message a string vector
         let mut msg = Vec::<String>::new();
@@ -182,6 +206,7 @@ impl Server {
             .map(|x: &u32| x.to_string() + ",")
             .collect::<String>();
 
+        // construct message
         msg.push(_committee.trim_end_matches(',').to_string());
         msg.push(message.clone());
         let _: Vec<_> = agg_list
@@ -201,13 +226,22 @@ impl Server {
                 Message to sign: {:?}",
                 committee, sign_req.msg
             );
-
+            // send signature request to clients
             self.send(
                 self.clients[(i - 1) as usize].clone(),
                 "sign".to_owned(),
                 sign_req,
             )
             .await;
+        }
+    }
+
+    pub async fn sign_aggregation(self, msg: Message) {
+        if self
+            .committee
+            .contains_key(&msg.sender.parse::<u32>().expect("Cannot parse sender's id"))
+        {
+            signAgg2::signAgg2(self.msg, self.committee);
         }
     }
 }

@@ -10,4 +10,5 @@ pub mod signAgg;
 pub mod signAgg2;
 pub mod signOff;
 pub mod signOn;
+pub mod tilde_r;
 pub mod verification;

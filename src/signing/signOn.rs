@@ -23,17 +23,17 @@ pub fn sign_on(
     // hash b_pre with sha512
 
     // prod = out[j]^(b^(j-1))
-    let mut big_r = RistrettoPoint::identity();
+    let mut tilde_R = RistrettoPoint::identity();
     for (j, _) in out.iter().enumerate() {
         let bpowj = scalar_pow(b, j as u32);
         // make bpowj a scalar
 
-        big_r += out[j] * bpowj;
+        tilde_R += out[j] * bpowj;
     }
 
     // compute challenge
     // let c = hash_sig(tilde_y, big_r, m);
-    let c = hash_sig(signer.vehkey, big_r, m);
+    let c = hash_sig(signer.vehkey, tilde_R, m);
     // println!("c in signon: {:?}", c);
 
     // println!("HASHING SIGNATURE ON HASHON! {:?}", c);
@@ -53,5 +53,5 @@ pub fn sign_on(
     let z_1 = c * signer.get_share() * (lagrange_coeff + rho_i) + rhf; // c * signer.private_key.get_key() * (lagrange_coeff +rho_i) + rhf;
                                                                        // println!("rho_i from {}: \n {:?}", signer.id, rho_i);
 
-    (big_r, z_1)
+    (tilde_R, z_1)
 }

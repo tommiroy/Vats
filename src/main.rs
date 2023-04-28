@@ -175,6 +175,10 @@ pub async fn main() {
                                 my_server.clone().sign_request(msg.msg[0].clone(), 3).await;
                             }
                         }
+                        MsgType::SignAgg => {
+                            println!("Update type: {:?}", msg.msg);
+                            todo!("Add update for keygen");
+                        }
                         MsgType::Update => {
                             println!("Update type: {:?}", msg.msg);
                             todo!("Add update for keygen");
@@ -235,6 +239,10 @@ pub async fn main() {
                             &my_client.clone().sign_msg(msg.msg).await;
                             // println!("Sign type: {:?}", msg.msg);
                             // // todo!("Add sign for keygen");
+                        }
+                        MsgType::SignAgg => {
+                            println!("Aggregation: {:?}", msg.msg);
+                            // todo!("Add update for keygen");
                         }
                         MsgType::Update => {
                             println!("Update type: {:?}", msg.msg);

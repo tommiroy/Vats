@@ -63,6 +63,7 @@ pub enum MsgType {
     Keygen,
     Nonce,
     Sign,
+    SignAgg,
     Update,
 }
 

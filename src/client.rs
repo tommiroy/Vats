@@ -191,10 +191,10 @@ impl Client {
         let sig_msg = Message {
             sender: self.id.to_string(),
             receiver: "central".to_string(),
-            msg_type: MsgType::Sign,
+            msg_type: MsgType::SignAgg,
             msg: vec![point_to_string(big_r), scalar_to_string(&z)],
         };
-        // self.send("sign".to_string(), sig_msg).await;
+        self.send("SignAgg".to_string(), sig_msg).await;
     }
 }
 
