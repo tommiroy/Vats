@@ -6,7 +6,7 @@ use super::super::client::Client;
 use super::super::util::*;
 
 use crate::signing::keyAgg::key_agg;
-use crate::signing::muSigCoef::musig_coef;
+// use crate::signing::muSigCoef::musig_coef;
 
 pub fn sign_on(
     // signer: Signer,
@@ -17,9 +17,16 @@ pub fn sign_on(
     signers: Committee,
 ) -> (RistrettoPoint, Scalar) {
     let rho_i = musig_coef(signers.clone(), signer.pubkey);
+
+    println!("signOn's committee: {:?}", signers.signers.keys());
     let tilde_y = key_agg(signers.clone()).unwrap();
 
+    println!("tilde_y: {}", point_to_string(tilde_y));
+    let print_out = out.iter().map(|point| point_to_string(*point)).collect::<String>();
+    println!("out_list: {print_out:?}");
+
     let b = hash_non(tilde_y, out.clone(), m.clone());
+    println!("b in signon:{}", scalar_to_string(&b));
     // hash b_pre with sha512
 
     // prod = out[j]^(b^(j-1))
@@ -31,6 +38,7 @@ pub fn sign_on(
         tilde_R += out[j] * bpowj;
     }
 
+    println!("big_r in signon: {}", point_to_string(big_r));
     // compute challenge
     // let c = hash_sig(tilde_y, big_r, m);
     let c = hash_sig(signer.vehkey, tilde_R, m);
