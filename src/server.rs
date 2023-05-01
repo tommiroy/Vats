@@ -253,14 +253,9 @@ impl Server {
     // handles recieved signatures from the clients
     //
     pub async fn sign_aggregation(self, msg: Message) {
-        if self
-            .committee
-            .contains_key(&msg.sender.parse::<u32>().expect("Cannot parse sender's id"))
-        {
-            info!("Recieved signature from: {:?}", msg.sender);
-            info!("Signature: {:?}", msg.msg);
-
-        
+        let big_ri = string_to_point(&msg.msg.get(0).unwrap().clone());
+        let zi = string_to_scalar(&msg.msg.get(1).unwrap().clone());
+        let bigR_i = string_to_point(&msg.msg.get(2).unwrap().clone());
     }
 }
 

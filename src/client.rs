@@ -188,7 +188,7 @@ impl Client {
             .iter()
             .map(|x| string_to_point(x).unwrap())
             .collect::<Vec<RistrettoPoint>>();
-        let (big_r, (z, bigR_1)) = sign_on(
+        let (big_r, (z, bigR_i)) = sign_on(
             self.clone(),
             self.clone().rs,
             out,
@@ -207,7 +207,7 @@ impl Client {
             msg: vec![
                 point_to_string(big_r),
                 scalar_to_string(&z),
-                point_to_string(bigR_1),
+                point_to_string(bigR_i),
             ],
         };
         self.send("SignAgg".to_string(), sig_msg).await;
