@@ -9,12 +9,14 @@ use ::log::info;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
+use super::util::*;
 use rand::prelude::*;
 use serde_json::to_string;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
+
 // #[derive(Clone, Deserialize, Debug, Serialize)]
 #[derive(Clone, Debug)]
 pub struct Server {
@@ -253,9 +255,14 @@ impl Server {
     // handles recieved signatures from the clients
     //
     pub async fn sign_aggregation(self, msg: Message) {
-        let big_ri = string_to_point(&msg.msg.get(0).unwrap().clone());
-        let zi = string_to_scalar(&msg.msg.get(1).unwrap().clone());
-        let bigR_i = string_to_point(&msg.msg.get(2).unwrap().clone());
+        let big_ri = string_to_point(&msg.msg.get(0).unwrap().clone()).unwrap();
+        let zi = string_to_scalar(&msg.msg.get(1).unwrap().clone()).unwrap();
+        let bigR_i = string_to_point(&msg.msg.get(2).unwrap().clone()).unwrap();
+
+        musig_coef(
+            self.committee.clone(),
+            self.pubkeys[&msg.sender.parse::<u32>().unwrap()],
+        );
     }
 }
 
