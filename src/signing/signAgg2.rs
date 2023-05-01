@@ -1,7 +1,6 @@
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 
 use super::super::util::Committee;
-use super::muSigCoef::musig_coef;
 use super::tilde_r::tilde_r;
 
 pub fn signAgg2(
@@ -23,10 +22,16 @@ pub fn signAgg2(
         }
     }
 
-    let z = out_prim.iter().sum();
-    if let Err(msg) = z {
+    //let z = out_prim.iter().sum();
+    // sum the Scalars in out_prim
+    let mut z = Scalar::zero();
+    for (i, _) in out_prim.iter().enumerate() {
+        z += out_prim[i].1 .0;
+    }
+
+    if let Err(msg) = Ok(z) {
         return Err(msg);
     }
     // let rho = musig_coef(committee, big_ys[0]);
-    z
+    return Ok(z);
 }

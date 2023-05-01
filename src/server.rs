@@ -35,6 +35,8 @@ pub struct Server {
     pub pubkeys: HashMap<u32, RistrettoPoint>,
     // List of nonces from signoff
     pub nonces: HashMap<u32, Vec<RistrettoPoint>>,
+    // indivdual bigR from each signer
+    pub bigRi: HashMap<u32, Vec<RistrettoPoint>>,
     // Signing committee members
     pub committee: HashMap<u32, RistrettoPoint>,
     // Partial signatures
@@ -79,15 +81,12 @@ impl Server {
             // Only return Server instance _client is built.
             Self {
                 id,
-                // identity,
-                // ca,
-                // addr,
-                // port,
                 clients: Vec::<String>::new(),
                 _client,
                 pubkeys: HashMap::<u32, RistrettoPoint>::new(),
                 nonces: HashMap::<u32, Vec<RistrettoPoint>>::new(),
                 committee: HashMap::<u32, RistrettoPoint>::new(),
+                bigRi: HashMap::<u32, Vec<RistrettoPoint>>::new(),
                 partial_sigs: HashMap::<u32, (RistrettoPoint, Scalar)>::new(),
             }
         } else {
@@ -111,6 +110,10 @@ impl Server {
         }
     }
 
+    //
+    //--------------------------------------------------------------------------------
+    // Dealer that send each client their share
+    //
     pub async fn deal_shares(mut self, t: usize, n: usize) {
         // Generate keys
         let (sks, pks, group_pk, _, big_b) = dealer(t, n);
@@ -158,6 +161,10 @@ impl Server {
         }
     }
 
+    //
+    //--------------------------------------------------------------------------------
+    // handles recieved nonces from the clients
+    //
     pub async fn nonce_handler(&mut self, msg: Message) {
         // println!("Nonce handler: {:?}", msg);
         // println!("Nonce handler: {:?}", msg.msg);
@@ -173,6 +180,12 @@ impl Server {
                 .collect(),
         );
     }
+
+    //
+    //--------------------------------------------------------------------------------
+    // Signrequest to clients for a certain message
+    //
+
     pub async fn sign_request(mut self, message: String, t: usize) {
         // select a random committee
         let mut committee: Vec<u32> = self.nonces.clone().into_keys().collect();
@@ -235,14 +248,19 @@ impl Server {
             .await;
         }
     }
-
+    //
+    //--------------------------------------------------------------------------------
+    // handles recieved signatures from the clients
+    //
     pub async fn sign_aggregation(self, msg: Message) {
         if self
             .committee
             .contains_key(&msg.sender.parse::<u32>().expect("Cannot parse sender's id"))
         {
-            signAgg2::signAgg2(self.msg, self.committee);
-        }
+            info!("Recieved signature from: {:?}", msg.sender);
+            info!("Signature: {:?}", msg.msg);
+
+        
     }
 }
 

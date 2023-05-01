@@ -15,14 +15,18 @@ pub fn sign_on(
     out: Vec<RistrettoPoint>,
     m: String,
     signers: Committee,
-) -> (RistrettoPoint, Scalar) {
+    outi: Vec<RistrettoPoint>,
+) -> (RistrettoPoint, (Scalar, RistrettoPoint)) {
     let rho_i = musig_coef(signers.clone(), signer.pubkey);
 
     println!("signOn's committee: {:?}", signers.signers.keys());
     let tilde_y = key_agg(signers.clone()).unwrap();
 
     println!("tilde_y: {}", point_to_string(tilde_y));
-    let print_out = out.iter().map(|point| point_to_string(*point)).collect::<String>();
+    let print_out = out
+        .iter()
+        .map(|point| point_to_string(*point))
+        .collect::<String>();
     println!("out_list: {print_out:?}");
 
     let b = hash_non(tilde_y, out.clone(), m.clone());
@@ -37,8 +41,15 @@ pub fn sign_on(
 
         tilde_R += out[j] * bpowj;
     }
+    let mut bigR_i = RistrettoPoint::identity();
+    for (j, _) in outi.iter().enumerate() {
+        let bpowj = scalar_pow(b, j as u32);
+        // make bpowj a scalar
 
-    println!("big_r in signon: {}", point_to_string(big_r));
+        bigR_i += outi[j] * bpowj;
+    }
+
+    //println!("big_r in signon: {}", point_to_string(big_r));
     // compute challenge
     // let c = hash_sig(tilde_y, big_r, m);
     let c = hash_sig(signer.vehkey, tilde_R, m);
@@ -61,5 +72,5 @@ pub fn sign_on(
     let z_1 = c * signer.get_share() * (lagrange_coeff + rho_i) + rhf; // c * signer.private_key.get_key() * (lagrange_coeff +rho_i) + rhf;
                                                                        // println!("rho_i from {}: \n {:?}", signer.id, rho_i);
 
-    (tilde_R, z_1)
+    (tilde_R, (z_1, bigR_i))
 }

@@ -32,6 +32,8 @@ pub struct Client {
     // Vehicle pubkey
     pub vehkey: RistrettoPoint,
     // r:s
+    bigR: Vec<RistrettoPoint>,
+    //
     rs: Vec<Scalar>,
 }
 impl Client {
@@ -82,6 +84,7 @@ impl Client {
                 pubkey: RistrettoPoint::identity(),
                 pubkeys: HashMap::<u32, RistrettoPoint>::new(),
                 vehkey: RistrettoPoint::identity(),
+                bigR: Vec::<RistrettoPoint>::new(),
                 rs: Vec::<Scalar>::new(),
             }
         } else {
@@ -95,8 +98,11 @@ impl Client {
     pub async fn send(&self, channel: String, msg: Message) -> String {
         reqwest_send(self._client.clone(), self.central.clone(), channel, msg).await
     }
-
+    //
+    //--------------------------------------------------------------------------------
     // When received a keygen message from server then verify the share and store it together with pubkeys and group key
+    //
+
     pub fn init(&mut self, mut setup_msg: Vec<String>) {
         // Commitments from dealer
         let index = setup_msg
@@ -137,12 +143,15 @@ impl Client {
         (self.share, self.pubkey) = share_ver(ver_list, self.id, self.share, 3, 4);
     }
 
-    // Generate nonce for a signing session
+    //
+    //--------------------------------------------------------------------------------
+    // generate nonces and send to server
+    //
     pub async fn nonce_generator(&mut self, v: u32) {
         info!("Sent nonces to server");
         let mut big_rs = Vec::<RistrettoPoint>::new();
 
-        (big_rs, self.rs) = sign_off(v);
+        (self.bigR, self.rs) = sign_off(v);
 
         let nonce_list = Message {
             sender: self.id.clone().to_string(),
@@ -153,8 +162,10 @@ impl Client {
 
         self.send("nonce".to_string(), nonce_list).await;
     }
-
-    //  Sign messages
+    //
+    //--------------------------------------------------------------------------------
+    // Sign a message
+    //
     pub async fn sign_msg(self, msg: Vec<String>) {
         let com_ids: Vec<u32> = msg[0]
             .split(",")
@@ -177,12 +188,13 @@ impl Client {
             .iter()
             .map(|x| string_to_point(x).unwrap())
             .collect::<Vec<RistrettoPoint>>();
-        let (big_r, z) = sign_on(
+        let (big_r, (z, bigR_1)) = sign_on(
             self.clone(),
             self.clone().rs,
             out,
             msg_to_sign.to_owned(),
             committee,
+            self.clone().bigR,
         );
         info!(
             "Individual signature: {:?}",
@@ -192,12 +204,19 @@ impl Client {
             sender: self.id.to_string(),
             receiver: "central".to_string(),
             msg_type: MsgType::SignAgg,
-            msg: vec![point_to_string(big_r), scalar_to_string(&z)],
+            msg: vec![
+                point_to_string(big_r),
+                scalar_to_string(&z),
+                point_to_string(bigR_1),
+            ],
         };
         self.send("SignAgg".to_string(), sig_msg).await;
     }
 }
-
+//
+//--------------------------------------------------------------------------------
+// listener for the client
+//
 async fn _serve(
     identity: String,
     ca: String,
