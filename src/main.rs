@@ -103,7 +103,7 @@ use ::log::*;
 use client::Client;
 use cmd_center::run_cmd_center;
 use server::Server;
-use util::{point_to_string, scalar_to_string, Message, MsgType};
+use util::{point_to_string, Committee, Message, MsgType};
 
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -174,7 +174,13 @@ pub async fn main() {
                             my_server.sign_request(msg.msg[0].clone(), 3).await;
                         }
                         MsgType::SignAgg => {
-                            if let Ok(res) = my_server.sign_aggregate(msg, 3).await {
+                            if let Ok(signature) = my_server.sign_aggregate(msg, 3).await {
+                                signing::verification::ver(
+                                    my_server.m.clone(),
+                                    my_server.vehkey,
+                                    signature,
+                                    Committee::new(my_server.committee.clone()),
+                                );
                                 my_server.clear();
                                 my_server.request_nonces().await;
                                 // Final verfication
