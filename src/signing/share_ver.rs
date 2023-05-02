@@ -10,8 +10,6 @@ pub fn share_ver(
     big_bs: Vec<RistrettoPoint>,
     my_id: u32,
     share: Scalar,
-    t: usize,
-    n: usize,
 ) -> (Scalar, RistrettoPoint) {
     // Verify the shares with Feldmans VSS
     // let mut valid = true;

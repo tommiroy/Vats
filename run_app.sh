@@ -1,5 +1,5 @@
 #!/bin/bash
-export RUST_LOG=info
+export RUST_LOG=warn
 
 xterm -hold -e 'cargo run cmd' &
 xterm -hold -e 'cargo run server -e docker_x509/central/central.pem -c docker_x509/ca/ca.crt -a 127.0.0.1 -p 3030' &

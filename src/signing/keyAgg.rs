@@ -4,7 +4,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
-use super::super::util::{compute_lagrange_coefficient, Committee, musig_coef};
+use super::super::util::{compute_lagrange_coefficient, musig_coef, Committee};
 
 // S is signing committee members public keys
 pub fn key_agg(committee: Committee) -> Result<RistrettoPoint, &'static str> {
@@ -13,6 +13,9 @@ pub fn key_agg(committee: Committee) -> Result<RistrettoPoint, &'static str> {
             "Invalid input: L and participants must have non-zero length and the same length.",
         );
     }
+
+    // let mut keys: Vec<_> = committee.signers.iter().collect();
+    // keys.sort_by_key(|signer| signer.0);
 
     println!("key_agg: {:?}", committee.signers.keys());
     // let mut rho = Vec::<Scalar>::new();

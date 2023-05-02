@@ -80,7 +80,6 @@ pub async fn reqwest_send(
     // Serialize the message
     let msg = serde_json::to_string(&msg).expect("Cant serialize this message");
     // Send it!
-    // println!("{}", msg.clone());
     if let Ok(res) = reqwest_client
         .post("https://".to_owned() + &receiver + "/" + &channel)
         .body(serde_json::to_string(&msg).unwrap())
@@ -209,30 +208,6 @@ impl Committee {
     }
 }
 
-//     pub fn set_public_key(&mut self, key: RistrettoPoint) {
-//         self.public_key = key;
-//     }
-// }
-
-// Participant struct to hold possible signers of the message
-// Each participant has a private key and a public key associated with it
-// #[derive(Clone)]
-// pub struct commitee_members {
-//     pub id: u32,
-//     pub private_key: PrivateKey,
-//     pub public_key: PublicKey,
-// }
-
-// impl Signer {
-//     pub fn new(id: u32, private_key: PrivateKey, public_key: PublicKey) -> Signer {
-//         Signer {
-//             id,
-//             private_key,
-//             public_key,
-//         }
-//     }
-// }
-
 // #################### Hash Coefficient ###########################
 pub fn musig_coef(com: Committee, big_y: RistrettoPoint) -> Scalar {
     let mut hasher = Sha512::new();
@@ -242,13 +217,7 @@ pub fn musig_coef(com: Committee, big_y: RistrettoPoint) -> Scalar {
     let mut keys: Vec<_> = com.signers.iter().collect();
     keys.sort_by_key(|signer| signer.0);
 
-    println!("Musig_coef: ");
-    for key in keys.iter() {
-        println!("{} ",key.0);
-    }
-
-
-    for (&key,&big_r) in keys {
+    for (&key, &big_r) in keys {
         hasher.update(big_r.compress().as_bytes());
     }
     // Add participant own public key

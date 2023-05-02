@@ -5,7 +5,7 @@ use crate::signing::signAgg::sign_agg;
 use crate::signing::tilde_r::tilde_r;
 use crate::signing::*;
 
-use ::log::info;
+use ::log::*;
 
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
 use curve25519_dalek::ristretto::{RistrettoBasepointTable, RistrettoPoint};
@@ -119,7 +119,7 @@ impl Server {
     //--------------------------------------------------------------------------------
     // Dealer that send each client their share
     //
-    pub async fn deal_shares(mut self, t: usize, n: usize) {
+    pub async fn deal_shares(&mut self, t: usize, n: usize) {
         // Generate keys
         let (sks, pks, group_pk, _, big_b) = dealer(t, n);
 
@@ -194,7 +194,8 @@ impl Server {
     // Signrequest to clients for a certain message
     //
 
-    pub async fn sign_request(mut self, message: String, t: usize) {
+    pub async fn sign_request(&mut self, message: String, t: usize) {
+        self.m = message.clone();
         // select a random committee
         let mut committee: Vec<u32> = self.nonces.clone().into_keys().collect();
         let mut rng = rand::thread_rng();
@@ -261,24 +262,31 @@ impl Server {
     //--------------------------------------------------------------------------------
     // handles recieved signatures from the clients
     //
-    pub async fn sign_aggregation(self, msg: Message) {
-        let big_r = string_to_point(&msg.msg.get(0).unwrap().clone()).unwrap();
+    pub async fn sign_aggregation(&self, msg: Message) {
+        let tilde_rx = string_to_point(&msg.msg.get(0).unwrap().clone()).unwrap();
         let zx = string_to_scalar(&msg.msg.get(1).unwrap().clone()).unwrap();
         let bigR_x = string_to_point(&msg.msg.get(2).unwrap().clone()).unwrap();
 
         // make a Committee from self.committee
-        let committee = Committee::new(self.committee);
+        let committee = Committee::new(self.committee.clone());
+        let id = msg.sender.parse::<u32>().unwrap();
 
+        warn!("Recieved signature from: {:?}", id);
         // "recreating client varibles" rhs
-        let bigy_x = self.pubkeys[&msg.sender.parse::<u32>().unwrap()];
+        let &bigy_x = self.pubkeys.get(&id).unwrap();
+        warn!("big_yx: {:?}", point_to_string(bigy_x));
         let rho_x = musig_coef(committee.clone(), bigy_x);
-        let lambda_x =
-            compute_lagrange_coefficient(committee.clone(), msg.sender.parse::<u32>().unwrap());
-        let c_x = hash_sig(
-            self.vehkey,
-            tilde_r(committee, self.agg1, self.m.clone()),
-            self.m,
-        );
+        warn!("rho_x: {:?}", scalar_to_string(&rho_x));
+
+        let lambda_x = compute_lagrange_coefficient(committee.clone(), id);
+        warn!("lambda_x: {:?}", scalar_to_string(&lambda_x));
+
+        // let tilde_r = tilde_r(committee, self.agg1.clone(), self.m.clone());
+        // warn!("tilde_r: {:?}", point_to_string(tilde_r));
+
+        let c_x = hash_sig(self.vehkey, tilde_rx, self.m.clone());
+
+        warn!("c_x: {:?}", scalar_to_string(&c_x));
 
         // Verification of Partial signatures lhs
         let ver = &RISTRETTO_BASEPOINT_TABLE * &zx;
@@ -311,6 +319,8 @@ async fn _serve(
                 .or(warp::path("nonce"))
                 .unify()
                 .or(warp::path("sign"))
+                .unify()
+                .or(warp::path("signagg"))
                 .unify()
                 .or(warp::path("update"))
                 .unify(),

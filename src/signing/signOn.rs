@@ -4,6 +4,7 @@ use curve25519_dalek::traits::Identity;
 
 use super::super::client::Client;
 use super::super::util::*;
+use ::log::*;
 
 use crate::signing::keyAgg::key_agg;
 // use crate::signing::muSigCoef::musig_coef;
@@ -69,8 +70,13 @@ pub fn sign_on(
     // calculate z_1
     let lagrange_coeff = compute_lagrange_coefficient(signers, signer.id);
 
-    let z_1 = c * signer.get_share() * (lagrange_coeff + rho_i) + rhf; // c * signer.private_key.get_key() * (lagrange_coeff +rho_i) + rhf;
-                                                                       // println!("rho_i from {}: \n {:?}", signer.id, rho_i);
+    let z_i = c * signer.get_share() * (lagrange_coeff + rho_i) + rhf; // c * signer.private_key.get_key() * (lagrange_coeff +rho_i) + rhf;
 
-    (tilde_R, (z_1, bigR_i))
+    warn!("rho_i {:?}", scalar_to_string(&rho_i));
+    warn!("bigR_i {:?}", point_to_string(bigR_i));
+    warn!("z_i {:?}", scalar_to_string(&z_i));
+    warn!("c_i {:?}", scalar_to_string(&c));
+    warn!("lambda_i {:?}", scalar_to_string(&lagrange_coeff));
+    warn!("tilde_r {:?}", point_to_string(tilde_R));
+    (tilde_R, (z_i, bigR_i))
 }

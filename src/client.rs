@@ -139,8 +139,9 @@ impl Client {
             ver_list.push(big_b);
         }
 
+        self.pubkey = self.pubkeys.get(&self.id).unwrap().clone();
         //   Vec<(u32, RistrettoPoint)>, my_id: u32, share: Scalar, t: usize, n: usize,
-        (self.share, self.pubkey) = share_ver(ver_list, self.id, self.share, 3, 4);
+        (self.share, self.vehkey) = share_ver(ver_list, self.id, self.share);
     }
 
     //
@@ -170,7 +171,7 @@ impl Client {
     //--------------------------------------------------------------------------------
     // Sign a message
     //
-    pub async fn sign_msg(self, msg: Vec<String>) {
+    pub async fn sign_msg(&self, msg: Vec<String>) {
         let com_ids: Vec<u32> = msg[0]
             .split(",")
             .map(|id| id.parse::<u32>().unwrap())
@@ -184,8 +185,6 @@ impl Client {
             }
         }
         let committee = Committee::new(com);
-        // info!("Committee: {:?}", committee.clone());
-        // info!("pubkeys: {:?}", self.pubkeys);
         let msg_to_sign = &msg[1];
 
         let out = msg[2..]
@@ -214,7 +213,8 @@ impl Client {
                 point_to_string(bigR_i),
             ],
         };
-        self.send("SignAgg".to_string(), sig_msg).await;
+        warn!("my pubkey {:?}", point_to_string(self.pubkey));
+        self.send("signagg".to_string(), sig_msg).await;
     }
 }
 //

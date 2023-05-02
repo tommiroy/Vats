@@ -153,7 +153,7 @@ pub async fn main() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             info!("Got keygen cmd!!!! RUN!");
-                            my_server.clone().deal_shares(3, 4).await;
+                            &my_server.deal_shares(3, 4).await;
 
                             // println!(
                             //     "KeyGen type:\n Sender: {}\n Message: {:?}",
@@ -171,11 +171,11 @@ pub async fn main() {
                             &my_server.nonce_handler(msg).await;
                         }
                         MsgType::Sign => {
-                            if my_server.nonces.len() > 3 {
-                                my_server.clone().sign_request(msg.msg[0].clone(), 3).await;
-                            }
+                            &my_server.sign_request(msg.msg[0].clone(), 3).await;
                         }
-                        MsgType::SignAgg => my_server.clone().sign_aggregation(msg).await,
+                        MsgType::SignAgg => {
+                            &my_server.sign_aggregation(msg).await;
+                        }
 
                         MsgType::Update => {
                             println!("Update type: {:?}", msg.msg);
