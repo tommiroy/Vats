@@ -2,7 +2,7 @@
 use super::util::*;
 use crate::signing::key_dealer::dealer;
 use crate::signing::signAgg::sign_agg;
-use crate::signing::tilde_r::tilde_r;
+use crate::signing::tilde_r::calculate_tilde_r;
 use crate::signing::*;
 
 use ::log::*;
@@ -39,8 +39,6 @@ pub struct Server {
     pub committee: HashMap<u32, RistrettoPoint>,
     // Partial signatures
     pub partial_sigs: HashMap<u32, (RistrettoPoint, Scalar)>,
-    // Signing aggregate 1
-    pub agg1: Vec<RistrettoPoint>,
     // Current Message
     pub m: String,
 }
@@ -91,7 +89,6 @@ impl Server {
                 committee: HashMap::<u32, RistrettoPoint>::new(),
                 bigRx: HashMap::<u32, Vec<RistrettoPoint>>::new(),
                 partial_sigs: HashMap::<u32, (RistrettoPoint, Scalar)>::new(),
-                agg1: Vec::<RistrettoPoint>::new(),
                 m: String::new(),
             }
         } else {
@@ -174,8 +171,6 @@ impl Server {
     // handles recieved nonces from the clients
     //
     pub async fn nonce_handler(&mut self, msg: Message) {
-        // println!("Nonce handler: {:?}", msg);
-        // println!("Nonce handler: {:?}", msg.msg);
         info!("Recieved Nonces: {:?}", msg.msg);
         self.nonces.insert(
             msg.sender.parse::<u32>().unwrap(),
@@ -220,7 +215,7 @@ impl Server {
             );
         }
         // Aggregate the nonces
-        self.agg1 = sign_agg(outs, 2);
+        let agg1 = sign_agg(outs, 2);
         // Put out and message into a message a string vector
         let mut msg = Vec::<String>::new();
         let _committee = committee
@@ -231,11 +226,7 @@ impl Server {
         // construct message
         msg.push(_committee.trim_end_matches(',').to_string());
         msg.push(message.clone());
-        let _: Vec<_> = self
-            .agg1
-            .iter()
-            .map(|r| msg.push(point_to_string(*r)))
-            .collect();
+        let _: Vec<_> = agg1.iter().map(|r| msg.push(point_to_string(*r))).collect();
         for i in committee.clone().into_iter() {
             let sign_req = Message {
                 sender: self.id.clone(),
