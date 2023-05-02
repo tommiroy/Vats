@@ -213,7 +213,6 @@ impl Client {
                 point_to_string(bigR_i),
             ],
         };
-        warn!("my pubkey {:?}", point_to_string(self.pubkey));
         self.send("signagg".to_string(), sig_msg).await;
     }
 }

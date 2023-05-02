@@ -1,19 +1,20 @@
 #![allow(dead_code)]
+use super::signing::signAgg2::sign_agg2;
 use super::util::*;
 use crate::signing::key_dealer::dealer;
 use crate::signing::signAgg::sign_agg;
-use crate::signing::tilde_r::calculate_tilde_r;
-use crate::signing::*;
+// use crate::signing::tilde_r::calculate_tilde_r;
+// use crate::signing::*;
 
 use ::log::*;
 
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
-use curve25519_dalek::ristretto::{RistrettoBasepointTable, RistrettoPoint};
+// use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
+use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
-use super::util::*;
+// use super::util::*;
 use rand::prelude::*;
-use serde_json::to_string;
+// use serde_json::to_string;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
@@ -34,11 +35,13 @@ pub struct Server {
     // List of nonces from signoff
     pub nonces: HashMap<u32, Vec<RistrettoPoint>>,
     // indivdual bigR from each signer
-    pub bigRx: HashMap<u32, Vec<RistrettoPoint>>,
+    // pub bigRx: HashMap<u32, Vec<RistrettoPoint>>,
     // Signing committee members
     pub committee: HashMap<u32, RistrettoPoint>,
     // Partial signatures
-    pub partial_sigs: HashMap<u32, (RistrettoPoint, Scalar)>,
+    pub partial_sigs: HashMap<u32, (RistrettoPoint, (RistrettoPoint, Scalar))>,
+    // Aggregated nonces
+    pub out: Vec<RistrettoPoint>,
     // Current Message
     pub m: String,
 }
@@ -87,8 +90,9 @@ impl Server {
                 vehkey: RistrettoPoint::default(),
                 nonces: HashMap::<u32, Vec<RistrettoPoint>>::new(),
                 committee: HashMap::<u32, RistrettoPoint>::new(),
-                bigRx: HashMap::<u32, Vec<RistrettoPoint>>::new(),
-                partial_sigs: HashMap::<u32, (RistrettoPoint, Scalar)>::new(),
+                // bigRx: HashMap::<u32, Vec<RistrettoPoint>>::new(),
+                partial_sigs: HashMap::<u32, (RistrettoPoint, (RistrettoPoint, Scalar))>::new(),
+                out: Vec::<RistrettoPoint>::new(),
                 m: String::new(),
             }
         } else {
@@ -215,7 +219,7 @@ impl Server {
             );
         }
         // Aggregate the nonces
-        let agg1 = sign_agg(outs, 2);
+        self.out = sign_agg(outs, 2);
         // Put out and message into a message a string vector
         let mut msg = Vec::<String>::new();
         let _committee = committee
@@ -226,7 +230,11 @@ impl Server {
         // construct message
         msg.push(_committee.trim_end_matches(',').to_string());
         msg.push(message.clone());
-        let _: Vec<_> = agg1.iter().map(|r| msg.push(point_to_string(*r))).collect();
+        let _: Vec<_> = self
+            .out
+            .iter()
+            .map(|r| msg.push(point_to_string(*r)))
+            .collect();
         for i in committee.clone().into_iter() {
             let sign_req = Message {
                 sender: self.id.clone(),
@@ -253,41 +261,58 @@ impl Server {
     //--------------------------------------------------------------------------------
     // handles recieved signatures from the clients
     //
-    pub async fn sign_aggregation(&self, msg: Message) {
+    pub async fn sign_aggregate(
+        &mut self,
+        msg: Message,
+        t: usize,
+    ) -> Result<(RistrettoPoint, Scalar), Vec<u32>> {
         let tilde_rx = string_to_point(&msg.msg.get(0).unwrap().clone()).unwrap();
         let zx = string_to_scalar(&msg.msg.get(1).unwrap().clone()).unwrap();
-        let bigR_x = string_to_point(&msg.msg.get(2).unwrap().clone()).unwrap();
+        let big_rx = string_to_point(&msg.msg.get(2).unwrap().clone()).unwrap();
 
-        // make a Committee from self.committee
-        let committee = Committee::new(self.committee.clone());
-        let id = msg.sender.parse::<u32>().unwrap();
+        self.partial_sigs.insert(
+            msg.sender
+                .parse::<u32>()
+                .expect("server-sig_aggregate: cannot convert id"),
+            (tilde_rx, (big_rx, zx)),
+        );
 
-        warn!("Recieved signature from: {:?}", id);
-        // "recreating client varibles" rhs
-        let &bigy_x = self.pubkeys.get(&id).unwrap();
-        warn!("big_yx: {:?}", point_to_string(bigy_x));
-        let rho_x = musig_coef(committee.clone(), bigy_x);
-        warn!("rho_x: {:?}", scalar_to_string(&rho_x));
-
-        let lambda_x = compute_lagrange_coefficient(committee.clone(), id);
-        warn!("lambda_x: {:?}", scalar_to_string(&lambda_x));
-
-        // let tilde_r = tilde_r(committee, self.agg1.clone(), self.m.clone());
-        // warn!("tilde_r: {:?}", point_to_string(tilde_r));
-
-        let c_x = hash_sig(self.vehkey, tilde_rx, self.m.clone());
-
-        warn!("c_x: {:?}", scalar_to_string(&c_x));
-
-        // Verification of Partial signatures lhs
-        let ver = &RISTRETTO_BASEPOINT_TABLE * &zx;
-
-        ///
-        if ver == bigR_x + bigy_x * (c_x * (rho_x + lambda_x)) {
-            println!("Verification of Partial signatures: OK");
+        if self.partial_sigs.len() >= t {
+            let signature = sign_agg2(self);
+            match signature.clone() {
+                Ok(sign) => {
+                    println!("YAAAAAAAAAAAAAAAAAAYYYYYYYYYYYYYY");
+                }
+                Err(cheaters) => {
+                    println!("CHEATERS!!!!!");
+                }
+            }
+            signature
         } else {
-            println!("Verification of Partial signatures: NOT OK");
+            Err(Vec::<u32>::new())
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.nonces = HashMap::<u32, Vec<RistrettoPoint>>::new();
+        self.committee = HashMap::<u32, RistrettoPoint>::new();
+        // self.bigRx = HashMap::<u32, Vec<RistrettoPoint>>::new();
+        self.partial_sigs = HashMap::<u32, (RistrettoPoint, (RistrettoPoint, Scalar))>::new();
+        // out: Vec::<RistrettoPoint>::new(),
+        self.m = String::new();
+    }
+
+    pub async fn request_nonces(&self) {
+        self.broadcast(
+            "nonce".to_owned(),
+            Message {
+                sender: "central".to_string(),
+                receiver: "all".to_string(),
+                msg_type: MsgType::Nonce,
+                msg: vec!["".to_string()],
+            },
+        )
+        .await;
     }
 }
 

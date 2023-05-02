@@ -153,7 +153,7 @@ pub async fn main() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             info!("Got keygen cmd!!!! RUN!");
-                            &my_server.deal_shares(3, 4).await;
+                            my_server.deal_shares(3, 4).await;
 
                             // println!(
                             //     "KeyGen type:\n Sender: {}\n Message: {:?}",
@@ -168,13 +168,17 @@ pub async fn main() {
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
-                            &my_server.nonce_handler(msg).await;
+                            my_server.nonce_handler(msg).await;
                         }
                         MsgType::Sign => {
-                            &my_server.sign_request(msg.msg[0].clone(), 3).await;
+                            my_server.sign_request(msg.msg[0].clone(), 3).await;
                         }
                         MsgType::SignAgg => {
-                            &my_server.sign_aggregation(msg).await;
+                            if let Ok(res) = my_server.sign_aggregate(msg, 3).await {
+                                my_server.clear();
+                                my_server.request_nonces().await;
+                                // Final verfication
+                            }
                         }
 
                         MsgType::Update => {
@@ -230,11 +234,13 @@ pub async fn main() {
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
+                            &my_client.nonce_generator(2).await;
                             println!("Nonce type: {:?}", msg.msg);
                             // todo!("Add nonce for keygen");
                         }
                         MsgType::Sign => {
                             &my_client.clone().sign_msg(msg.msg).await;
+                            // &my_client.nonce_generator(2).await;
                             // println!("Sign type: {:?}", msg.msg);
                             // // todo!("Add sign for keygen");
                         }

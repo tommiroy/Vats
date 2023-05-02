@@ -72,11 +72,5 @@ pub fn sign_on(
 
     let z_i = c * signer.get_share() * (lagrange_coeff + rho_i) + rhf; // c * signer.private_key.get_key() * (lagrange_coeff +rho_i) + rhf;
 
-    warn!("rho_i {:?}", scalar_to_string(&rho_i));
-    warn!("bigR_i {:?}", point_to_string(bigR_i));
-    warn!("z_i {:?}", scalar_to_string(&z_i));
-    warn!("c_i {:?}", scalar_to_string(&c));
-    warn!("lambda_i {:?}", scalar_to_string(&lagrange_coeff));
-    warn!("tilde_r {:?}", point_to_string(tilde_R));
     (tilde_R, (z_i, bigR_i))
 }
