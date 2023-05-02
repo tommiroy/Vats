@@ -157,7 +157,11 @@ impl Client {
             sender: self.id.clone().to_string(),
             receiver: "central".to_string(),
             msg_type: MsgType::Nonce,
-            msg: big_rs.iter().map(|big_r| point_to_string(*big_r)).collect(),
+            msg: self
+                .bigR
+                .iter()
+                .map(|big_r| point_to_string(*big_r))
+                .collect(),
         };
 
         self.send("nonce".to_string(), nonce_list).await;

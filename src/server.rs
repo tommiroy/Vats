@@ -2,11 +2,13 @@
 use super::util::*;
 use crate::signing::key_dealer::dealer;
 use crate::signing::signAgg::sign_agg;
+use crate::signing::tilde_r::tilde_r;
 use crate::signing::*;
 
 use ::log::info;
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
+use curve25519_dalek::ristretto::{RistrettoBasepointTable, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 
 use super::util::*;
@@ -21,28 +23,26 @@ use warp::*;
 #[derive(Clone, Debug)]
 pub struct Server {
     pub id: String,
-    // Certificate and key of this server
-    // identity: String,
-    // // CA of other nodes
-    // ca: String,
-    // // server address
-    // addr: String,
-    // // Port that this server runs on
-    // port: String,
     // List of clients/nodes/neighbours
     pub clients: Vec<String>,
     // clients:    HashMap<String, String>,
     _client: reqwest::Client,
+    // Vehicle Key
+    pub vehkey: RistrettoPoint,
     // Public keys: <ID, pubkey>
     pub pubkeys: HashMap<u32, RistrettoPoint>,
     // List of nonces from signoff
     pub nonces: HashMap<u32, Vec<RistrettoPoint>>,
     // indivdual bigR from each signer
-    pub bigRi: HashMap<u32, Vec<RistrettoPoint>>,
+    pub bigRx: HashMap<u32, Vec<RistrettoPoint>>,
     // Signing committee members
     pub committee: HashMap<u32, RistrettoPoint>,
     // Partial signatures
     pub partial_sigs: HashMap<u32, (RistrettoPoint, Scalar)>,
+    // Signing aggregate 1
+    pub agg1: Vec<RistrettoPoint>,
+    // Current Message
+    pub m: String,
 }
 
 impl Server {
@@ -86,10 +86,13 @@ impl Server {
                 clients: Vec::<String>::new(),
                 _client,
                 pubkeys: HashMap::<u32, RistrettoPoint>::new(),
+                vehkey: RistrettoPoint::default(),
                 nonces: HashMap::<u32, Vec<RistrettoPoint>>::new(),
                 committee: HashMap::<u32, RistrettoPoint>::new(),
-                bigRi: HashMap::<u32, Vec<RistrettoPoint>>::new(),
+                bigRx: HashMap::<u32, Vec<RistrettoPoint>>::new(),
                 partial_sigs: HashMap::<u32, (RistrettoPoint, Scalar)>::new(),
+                agg1: Vec::<RistrettoPoint>::new(),
+                m: String::new(),
             }
         } else {
             panic!("Cant build _client");
@@ -120,6 +123,9 @@ impl Server {
         // Generate keys
         let (sks, pks, group_pk, _, big_b) = dealer(t, n);
 
+        // Add vehcile keys to the server
+        self.vehkey = group_pk;
+
         pks.iter().for_each(|pk| {
             self.pubkeys.insert(pk.0, pk.1);
         });
@@ -128,7 +134,7 @@ impl Server {
             // Send each share to each participant
             // node.send()
             let secret_key = scalar_to_string(&sks[id].1);
-            let vehicle_key = point_to_string(group_pk);
+            let vehicle_key = point_to_string(self.vehkey);
 
             //creating vector of keys to be able to send both keys in one message
             let mut keys = vec![];
@@ -213,7 +219,7 @@ impl Server {
             );
         }
         // Aggregate the nonces
-        let agg_list = sign_agg(outs, 2);
+        self.agg1 = sign_agg(outs, 2);
         // Put out and message into a message a string vector
         let mut msg = Vec::<String>::new();
         let _committee = committee
@@ -224,7 +230,8 @@ impl Server {
         // construct message
         msg.push(_committee.trim_end_matches(',').to_string());
         msg.push(message.clone());
-        let _: Vec<_> = agg_list
+        let _: Vec<_> = self
+            .agg1
             .iter()
             .map(|r| msg.push(point_to_string(*r)))
             .collect();
@@ -255,14 +262,33 @@ impl Server {
     // handles recieved signatures from the clients
     //
     pub async fn sign_aggregation(self, msg: Message) {
-        let big_ri = string_to_point(&msg.msg.get(0).unwrap().clone()).unwrap();
-        let zi = string_to_scalar(&msg.msg.get(1).unwrap().clone()).unwrap();
-        let bigR_i = string_to_point(&msg.msg.get(2).unwrap().clone()).unwrap();
+        let big_r = string_to_point(&msg.msg.get(0).unwrap().clone()).unwrap();
+        let zx = string_to_scalar(&msg.msg.get(1).unwrap().clone()).unwrap();
+        let bigR_x = string_to_point(&msg.msg.get(2).unwrap().clone()).unwrap();
 
-        musig_coef(
-            self.committee.clone(),
-            self.pubkeys[&msg.sender.parse::<u32>().unwrap()],
+        // make a Committee from self.committee
+        let committee = Committee::new(self.committee);
+
+        // "recreating client varibles" rhs
+        let bigy_x = self.pubkeys[&msg.sender.parse::<u32>().unwrap()];
+        let rho_x = musig_coef(committee.clone(), bigy_x);
+        let lambda_x =
+            compute_lagrange_coefficient(committee.clone(), msg.sender.parse::<u32>().unwrap());
+        let c_x = hash_sig(
+            self.vehkey,
+            tilde_r(committee, self.agg1, self.m.clone()),
+            self.m,
         );
+
+        // Verification of Partial signatures lhs
+        let ver = &RISTRETTO_BASEPOINT_TABLE * &zx;
+
+        ///
+        if ver == bigR_x + bigy_x * (c_x * (rho_x + lambda_x)) {
+            println!("Verification of Partial signatures: OK");
+        } else {
+            println!("Verification of Partial signatures: NOT OK");
+        }
     }
 }
 

@@ -33,5 +33,5 @@ pub fn signAgg2(
         return Err(msg);
     }
     // let rho = musig_coef(committee, big_ys[0]);
-    return Ok(z);
+    Ok(z)
 }
