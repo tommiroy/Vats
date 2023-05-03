@@ -191,9 +191,7 @@ pub async fn main() {
                             println!("Update type: {:?}", msg.msg);
                             todo!("Add update for keygen");
                         }
-                        _ => {
-                            println!("Placeholder")
-                        }
+
                     }
                 } else {
                     // Just for debugging

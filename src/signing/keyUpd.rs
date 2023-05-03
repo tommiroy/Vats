@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
 // use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
@@ -8,14 +10,7 @@ use rand::rngs::OsRng;
 use super::super::client::Client;
 use super::super::util::*;
 
-pub async fn key_upd(t: usize, n: usize, signer: Client, context: &str)
-// -> (
-//     Vec<(u32, Scalar)>,
-//     Vec<(u32, RistrettoPoint)>,
-//     RistrettoPoint,
-//     Scalar,
-// ) {
-{
+pub async fn key_upd(signer: Client, participants: Vec<u32>, t: usize, n: usize, context: String) {
     let mut rng: OsRng = OsRng;
 
     // Dealer samples t random values t-1 a   ----> t = 3
@@ -30,33 +25,32 @@ pub async fn key_upd(t: usize, n: usize, signer: Client, context: &str)
     // Calculate the shares    // Dealer samples t random values t-1 a   ----> t = 3
     // Dealer samples t random values t-1 a   ----> t = 3
 
-    let mut shares = Vec::with_capacity(t);
-    for i in 1..n + 1 {
+    let mut new_shares = HashMap::<u32, Scalar>::new();
+    for i in participants {
         let mut share = signer.get_share();
-        for j in 1..t {
-            share += a[j] * scalar_pow(Scalar::from(i as u32), j as u32);
+        for (j, &aj) in a.iter().enumerate() {
+            share += aj * scalar_pow(Scalar::from(i as u32), j as u32);
         }
-        shares.push((i as u32, share));
+        new_shares.insert(i, share);
     }
 
     // Generate the commitments which will be broadcasted 0<=j<=t
-    let mut commitments = Vec::with_capacity(t);
-    for j in 0..t {
-        commitments.push(&RISTRETTO_BASEPOINT_TABLE * &a[j]);
+    let mut big_as = Vec::with_capacity(t);
+    for aj in a.iter() {
+        big_as.push(&RISTRETTO_BASEPOINT_TABLE * aj);
     }
 
     // Generate Nonce k
-    let mut rand = OsRng;
-    let k = Scalar::random(&mut rand);
+    let k = Scalar::random(&mut rng);
 
     // Compute Response R = G^k
-    let big_r_i = &RISTRETTO_BASEPOINT_TABLE * &k;
+    let big_ri = &RISTRETTO_BASEPOINT_TABLE * &k;
 
     // Compute Challange c = H(i,Context,g^a_{i0}, Ri)
-    let c_i = hash_key(signer.id, context.to_string(), commitments[0], big_r_i);
+    let ci = hash_key(signer.id, context, big_as[0], big_ri);
 
     // Compute mu = k + a_{i0} * ci
-    let mu_i = k + a[0] * c_i;
+    let zi = k + a[0] * ci;
 
     // Compute the public commitment
     // let commitments = Vec::with_capacity(t);
@@ -65,13 +59,13 @@ pub async fn key_upd(t: usize, n: usize, signer: Client, context: &str)
     //     commitments.push(mini_sigma[i]);
     // }
 
-    let sigma_i = (big_r_i, mu_i);
+    let sigma_i = (big_ri, zi);
 
     //------------------------------------Broadcast --------------------------------------
 
     let sigma_i_string = (point_to_string(sigma_i.0), scalar_to_string(&sigma_i.1));
     let mut commitments_string = Vec::with_capacity(t);
-    for i in commitments.clone() {
+    for i in big_as.clone() {
         commitments_string.push(point_to_string(i));
     }
 
