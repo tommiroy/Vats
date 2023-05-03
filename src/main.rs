@@ -186,10 +186,14 @@ pub async fn main() {
                                 // Final verfication
                             }
                         }
-
+                        MsgType::Commitment => {
+                            my_server.broadcast("keyupd_commitment".to_owned(), msg).await;
+                            info!("Broadcasted commitments from {}", msg.sender);
+                        }
                         MsgType::Update => {
-                            println!("Update type: {:?}", msg.msg);
-                            todo!("Add update for keygen");
+                            
+                            // println!("Update type: {:?}", msg.msg);
+                            // todo!("Add update for keygen");
                         }
 
                     }

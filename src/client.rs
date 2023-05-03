@@ -98,6 +98,10 @@ impl Client {
     pub async fn send(&self, channel: String, msg: Message) -> String {
         reqwest_send(self._client.clone(), self.central.clone(), channel, msg).await
     }
+
+    // pub async fn broadcast(&self, msg: Message) -> String {
+    //     reqwest_send(self._client.clone(), self.central.clone(), "broadcast".to_string(), msg).await
+    // }
     //
     //--------------------------------------------------------------------------------
     // When received a keygen message from server then verify the share and store it together with pubkeys and group key

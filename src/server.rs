@@ -338,7 +338,9 @@ async fn _serve(
                 .unify()
                 .or(warp::path("signagg"))
                 .unify()
-                .or(warp::path("update"))
+                .or(warp::path("keyupd_commitment"))
+                .unify()
+                .or(warp::path("keyupd_newshare"))
                 .unify(),
         )
         // Match with json since the message is a serialized struct

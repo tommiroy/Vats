@@ -64,6 +64,7 @@ pub enum MsgType {
     Nonce,
     Sign,
     SignAgg,
+    Commitment,
     Update,
 }
 
