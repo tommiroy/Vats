@@ -64,7 +64,9 @@ pub enum MsgType {
     Nonce,
     Sign,
     SignAgg,
-    Update,
+    KeyUpd,
+    KeyUpdCommitment,
+    KeyUpdNewShare,
 }
 
 // ######################################################

@@ -133,10 +133,10 @@ pub async fn main() {
             port,
         }) => {
             let mut my_server = Server::new(id, identity, ca, addr, port, tx).await;
-            my_server.add_client("ecu1:3031".to_string());
-            my_server.add_client("ecu2:3032".to_string());
-            my_server.add_client("ecu3:3033".to_string());
-            my_server.add_client("ecu4:3034".to_string());
+            my_server.add_client(1, "ecu1:3031".to_string());
+            my_server.add_client(2, "ecu2:3032".to_string());
+            my_server.add_client(3, "ecu3:3033".to_string());
+            my_server.add_client(4, "ecu4:3034".to_string());
 
             // Handle incoming message from tx channel
             sleep(Duration::from_millis(500)).await;
@@ -186,11 +186,17 @@ pub async fn main() {
                                 // Final verfication
                             }
                         }
-
-                        MsgType::Update => {
-                            println!("Update type: {:?}", msg.msg);
-                            todo!("Add update for keygen");
+                        MsgType::KeyUpd => {
+                            // Start key updating
                         }
+                        MsgType::KeyUpdCommitment => {
+                            my_server.broadcast("keyupd_commitment".to_string(), msg).await;
+                        }
+
+                        MsgType::KeyUpdNewShare => {
+                            my_server.send(my_server.clients.get(&msg.receiver.parse::<u32>().unwrap()).expect("main: Cannot find client").clone(), "keyupd_commitment".to_owned(), msg).await;
+                        }
+
                         _ => {
                             println!("Placeholder")
                         }
@@ -251,12 +257,17 @@ pub async fn main() {
                             // // todo!("Add sign for keygen");
                         }
                         MsgType::SignAgg => {
-                            println!("Aggregation: {:?}", msg.msg);
-                            // todo!("Add update for keygen");
+                            println!("Not Signing Aggregator!");
                         }
-                        MsgType::Update => {
+                        MsgType::KeyUpd => {
+                            // Start key updating
+                        }
+                        MsgType::KeyUpdCommitment => {
                             println!("Update type: {:?}", msg.msg);
                             // todo!("Add update for keygen");
+                        }
+                        MsgType::KeyUpdNewShare => {
+                            // 
                         }
                     }
                 } else {

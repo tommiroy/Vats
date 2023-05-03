@@ -25,7 +25,7 @@ use warp::*;
 pub struct Server {
     pub id: String,
     // List of clients/nodes/neighbours
-    pub clients: Vec<String>,
+    pub clients: HashMap<u32, String>,
     // clients:    HashMap<String, String>,
     _client: reqwest::Client,
     // Vehicle Key
@@ -84,7 +84,7 @@ impl Server {
             // Only return Server instance _client is built.
             Self {
                 id,
-                clients: Vec::<String>::new(),
+                clients: HashMap::<u32,String>::new(),
                 _client,
                 pubkeys: HashMap::<u32, RistrettoPoint>::new(),
                 vehkey: RistrettoPoint::default(),
@@ -100,8 +100,8 @@ impl Server {
         }
     }
     // Have not tested
-    pub fn add_client(&mut self, addr: String) {
-        self.clients.push(addr);
+    pub fn add_client(&mut self,id :u32 , addr: String) {
+        self.clients.insert(id, addr);
     }
     // tested
     pub async fn send(&self, receiver: String, channel: String, msg: Message) -> String {
@@ -111,7 +111,7 @@ impl Server {
     // Broadcast a message to all nodes in clients
     pub async fn broadcast(&self, channel: String, msg: Message) {
         for node in self.clients.clone() {
-            let res = self.send(node.clone(), channel.clone(), msg.clone()).await;
+            let res = self.send(node.1.clone(), channel.clone(), msg.clone()).await;
             // println!("Sending message to {}: \n Response: {:?}", node, res);
         }
     }
@@ -131,10 +131,10 @@ impl Server {
             self.pubkeys.insert(pk.0, pk.1);
         });
 
-        for (id, node) in self.clients.clone().into_iter().enumerate() {
+        for (id, node) in self.clients.clone() {
             // Send each share to each participant
             // node.send()
-            let secret_key = scalar_to_string(&sks[id].1);
+            let secret_key = scalar_to_string(&sks[(id-1) as usize].1);
             let vehicle_key = point_to_string(self.vehkey);
 
             //creating vector of keys to be able to send both keys in one message
@@ -158,7 +158,7 @@ impl Server {
 
             // message consturciton
             let keygen_msg = Message {
-                sender: self.id.clone(),
+                sender: self.id.to_string(),
                 receiver: node.clone(),
                 msg_type: MsgType::Keygen,
                 msg: keys,
@@ -237,7 +237,7 @@ impl Server {
             .collect();
         for i in committee.clone().into_iter() {
             let sign_req = Message {
-                sender: self.id.clone(),
+                sender: self.id.to_string(),
                 receiver: i.to_string(),
                 msg_type: MsgType::Sign,
                 msg: msg.clone(),
@@ -250,7 +250,7 @@ impl Server {
             );
             // send signature request to clients
             self.send(
-                self.clients[(i - 1) as usize].clone(),
+                self.clients.get(&i).expect("server: Cannot find client").to_string(),
                 "sign".to_owned(),
                 sign_req,
             )
