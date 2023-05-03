@@ -39,7 +39,7 @@ pub struct Client {
     // Commitments in key updating
     pub commitments: HashMap::<u32, Vec<RistrettoPoint>>,
     // Context 
-    context: String,
+    pub context: String,
 
 }
 impl Client {
@@ -232,10 +232,15 @@ impl Client {
     pub fn commitment_handler(&mut self, msg: Message) {
         let big_rx: RistrettoPoint = string_to_point(&msg.msg[0]).expect("client-commitment_handler: Cannot convert to point");
         let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
-        let big_cx: Vec<RistrettoPoint> = msg.msg[2..].iter().map(|big_a| string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point")).collect();
-
-        if verify_sigma(self, (big_rx, zx), self.context.clone()) {
+        let mut big_cx = Vec::<RistrettoPoint>::new();
+        let _: Vec<_> = msg.msg[2..].iter().map(|big_a| big_cx.push(string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point"))).collect();
+        // info!("A0_{}: {}", msg.sender,point_to_string(big_cx[0]));
+        if verify_sigma(self, (big_rx, zx), self.context.clone(), msg.sender.parse::<u32>().expect("client-commitment_handler: Cannot parse id")) {
             self.commitments.insert(msg.sender.parse::<u32>().unwrap(), big_cx);
+            info!("New commitment from {} added.", msg.sender);
+        } else {
+            info!("Commitment Verification from {} failed.", msg.sender);
+
         }
         drop(msg);
     }   

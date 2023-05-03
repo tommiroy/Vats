@@ -189,15 +189,20 @@ pub async fn main() {
                         }
                         MsgType::KeyUpd => {
                             // Start key updating
-                            // my_server.broadcast("", msg)
+                            my_server.broadcast(Message {
+                                sender: "SA".to_string(),
+                                receiver: "all".to_string(),
+                                msg_type: MsgType::KeyUpd, 
+                                msg: msg.msg
+                            }).await;
 
                         }
                         MsgType::KeyUpdCommitment => {
-                            my_server.broadcast("keyupd_commitment".to_string(), msg).await;
+                            my_server.broadcast(msg).await;
                         }
 
                         MsgType::KeyUpdNewShare => {
-                            my_server.send(my_server.clients.get(&msg.receiver.parse::<u32>().unwrap()).expect("main: Cannot find client").clone(), "keyupd_commitment".to_owned(), msg).await;
+                            my_server.send(my_server.clients.get(&msg.receiver.parse::<u32>().unwrap()).expect("main: Cannot find client").clone(), msg).await;
                         }
 
                         _ => {
@@ -250,7 +255,7 @@ pub async fn main() {
                         }
                         MsgType::Nonce => {
                             my_client.nonce_generator(2).await;
-                            println!("Nonce type: {:?}", msg.msg);
+                            // println!("Nonce type: {:?}", msg.msg);
                             // todo!("Add nonce for keygen");
                         }
                         MsgType::Sign => {
@@ -264,12 +269,16 @@ pub async fn main() {
                         }
                         MsgType::KeyUpd => {
                             // Start key updating
+                            my_client.context = msg.msg[0].clone();
                             update_share(&mut my_client, vec![1u32,2u32,3u32], 3, msg.msg[0].clone()).await;
                         }
                         MsgType::KeyUpdCommitment => {
+                            info!("Got new commitment from {}", msg.sender);
                             my_client.commitment_handler(msg);
                         }
                         MsgType::KeyUpdNewShare => {
+                            info!("Got new share from {}", msg.sender);
+                            // my_client.
                             // 
                         }
                     }

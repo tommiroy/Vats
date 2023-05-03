@@ -104,16 +104,16 @@ impl Server {
         self.clients.insert(id, addr);
     }
     // tested
-    pub async fn send(&self, receiver: String, channel: String, msg: Message) -> String {
+    pub async fn send(&self, receiver: String, msg: Message) -> String {
         reqwest_send(self._client.clone(), receiver, msg).await
         // reqwest_send(self._client.clone(), receiver, channel, msg).await
 
     }
     // Have not tested
     // Broadcast a message to all nodes in clients
-    pub async fn broadcast(&self, channel: String, msg: Message) {
+    pub async fn broadcast(&self, msg: Message) {
         for node in self.clients.clone() {
-            let res = self.send(node.1.clone(), channel.clone(), msg.clone()).await;
+            let res = self.send(node.1.clone(), msg.clone()).await;
             // println!("Sending message to {}: \n Response: {:?}", node, res);
         }
     }
@@ -168,7 +168,7 @@ impl Server {
 
             info!("Sending message: {:?}", keygen_msg.msg);
 
-            self.send(node, "keygen".to_owned(), keygen_msg).await;
+            self.send(node, keygen_msg).await;
         }
     }
 
@@ -253,7 +253,7 @@ impl Server {
             // send signature request to clients
             self.send(
                 self.clients.get(&i).expect("server: Cannot find client").to_string(),
-                "sign".to_owned(),
+                // "sign".to_owned(),
                 sign_req,
             )
             .await;
@@ -306,7 +306,7 @@ impl Server {
 
     pub async fn request_nonces(&self) {
         self.broadcast(
-            "nonce".to_owned(),
+            // "nonce".to_owned(),
             Message {
                 sender: "central".to_string(),
                 receiver: "all".to_string(),

@@ -6,18 +6,26 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
 use curve25519_dalek::traits::Identity;
-use log::info;
+use log::*;
 use rand::rngs::OsRng;
 
 use super::super::client::Client;
 use super::super::util::*;
 
 
-pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), context_string: String) -> bool {
+pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), context_string: String, sender_id: u32) -> bool {
     let (big_r, zx) = sigma;
-    let c = hash_key(me.id, context_string, me.pubkey, big_r);
-    big_r == &RISTRETTO_BASEPOINT_TABLE * &zx + me.pubkey*c.invert()
+    // warn!("zi_{}: {}", sender_id, scalar_to_string(&zx.clone()));
     
+    let c = hash_key(sender_id, context_string.clone(), *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys"), big_r.clone());
+    // warn!("verify_sigma: c_{} {}", sender_id, scalar_to_string(&c));
+    // warn!("verify_sigma: context_string_{}: {}",sender_id, context_string);
+    // warn!("verify_sigma: pubkey_{} {}", sender_id, point_to_string(*me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")));
+    // warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));
+    
+    // warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));
+    // warn!("verify_sigma: rhs_{}: {}", sender_id, point_to_string(&RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*c.invert()));
+    big_r == &RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*(-c)
 }
 
 pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) {
@@ -73,7 +81,7 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     // Dealer samples t random values t-1 a   ----> t = 3
     let mut a: Vec<Scalar> = Vec::with_capacity(t);
     a.push(signer.get_share());
-    for _ in 1..t {
+    for _ in 1..(t-1) {
         a.push(Scalar::random(&mut rng));
     }
 
@@ -92,12 +100,12 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     }
 
     // Generate the public commitments which will be broadcasted 0<=j<=t
-    let mut big_as = Vec::with_capacity(t);
+    let mut big_as = Vec::with_capacity(t-1);
     for aj in a.iter() {
         big_as.push(&RISTRETTO_BASEPOINT_TABLE * aj);
     }
 
-    signer.commitments.insert(signer.id, big_as.clone());
+    // signer.commitments.insert(signer.id, big_as.clone());
     // Generate Nonce k
     let k = Scalar::random(&mut rng);
 
@@ -105,21 +113,32 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     let big_ri = &RISTRETTO_BASEPOINT_TABLE * &k;
 
     // Compute Challange c = H(i,Context,g^a_{i0}, Ri)
-    let ci = hash_key(signer.id, context, big_as[0], big_ri);
+    let ci: Scalar = hash_key(signer.id, context.clone(), big_as[0], big_ri);
+    // warn!("update_share: c_{} {}", signer.id, scalar_to_string(&ci));
+    // warn!("update_share: context_{} {}", signer.id, context.clone());
+    // warn!("update_share: pubkey_{} {}", signer.id, point_to_string(big_as[0]));
+    // warn!("update_share: big_ri{} {}", signer.id, point_to_string(big_ri));
 
     // Compute mu = k + a_{i0} * ci
     let zi = k + a[0] * ci;
+    // warn!("rhs{}: {}", signer.id, point_to_string(&RISTRETTO_BASEPOINT_TABLE*&zi.clone()));
+    // warn!("lhs{} {}", signer.id, point_to_string(big_ri+big_as[0]*ci));
+
+
 
     // Broadcast commitments and signature
     let mut msg_body = Vec::<String>::new();
     // commitments.iter().for_each(|commitment| msg_body.push(point_to_string(*commitment)));
     msg_body.push(point_to_string(big_ri));
     msg_body.push(scalar_to_string(&zi));
-    let _ = big_as.iter().map(|big_a| msg_body.push(point_to_string(*big_a)));
+    let _: Vec<_> = big_as.iter().map(|big_a| msg_body.push(point_to_string(*big_a))).collect();
+    // warn!("Length of a: {}", a.len());
+    // warn!("Length of big_as: {}", big_as.len());
+    // warn!("Length of body: {}", msg_body.len());
 
     let msg = Message {sender: signer.id.to_string(), receiver: "broadcast".to_string(), msg_type: MsgType::KeyUpdCommitment, msg: msg_body};
     signer.send("keyupd_commitment".to_owned(), msg).await;
-    info!("Sent commitments");
+    // info!("Sent commitments");
 
 
     // -------------------------- ROUND 2 ----------------------------------------
@@ -130,7 +149,7 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
             signer.send("keyupd_newshare".to_string(), msg).await;
         }
     }
-    info!("Sent new shares");
+    // info!("Sent new shares");
 
     true
 
