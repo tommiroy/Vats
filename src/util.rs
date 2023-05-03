@@ -76,14 +76,16 @@ pub enum MsgType {
 pub async fn reqwest_send(
     reqwest_client: reqwest::Client,
     receiver: String,
-    channel: String,
+    // channel: String,
     msg: Message,
 ) -> String {
     // Serialize the message
     let msg = serde_json::to_string(&msg).expect("Cant serialize this message");
     // Send it!
     if let Ok(res) = reqwest_client
-        .post("https://".to_owned() + &receiver + "/" + &channel)
+        // .post("https://".to_owned() + &receiver + "/" + &channel)
+        .post("https://".to_owned() + &receiver)
+
         .body(serde_json::to_string(&msg).unwrap())
         .send()
         .await

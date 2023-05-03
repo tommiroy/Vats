@@ -105,7 +105,9 @@ impl Server {
     }
     // tested
     pub async fn send(&self, receiver: String, channel: String, msg: Message) -> String {
-        reqwest_send(self._client.clone(), receiver, channel, msg).await
+        reqwest_send(self._client.clone(), receiver, msg).await
+        // reqwest_send(self._client.clone(), receiver, channel, msg).await
+
     }
     // Have not tested
     // Broadcast a message to all nodes in clients
@@ -331,18 +333,20 @@ async fn _serve(
     // Create routes for different algorithms
     let warp_routes = warp::post()
         // Match with multiple paths since their messages are handled similarly
-        .and(
-            warp::path("keygen")
-                .or(warp::path("nonce"))
-                .unify()
-                .or(warp::path("sign"))
-                .unify()
-                .or(warp::path("signagg"))
-                .unify()
-                .or(warp::path("update"))
-                .unify(),
-        )
-        // Match with json since the message is a serialized struct
+        // .and(
+            // warp::path("keygen")
+            //     .or(warp::path("nonce"))
+            //     .unify()
+            //     .or(warp::path("sign"))
+            //     .unify()
+            //     .or(warp::path("signagg"))
+            //     .unify()
+            //     .or(warp::path("update"))
+            //     .unify(),
+            
+            // )
+            // Match with json since the message is a serialized struct
+        .and(warp::any())
         .and(warp::body::json())
         // Just to include transmission channel
         // This is to send the received messages back to the main thread

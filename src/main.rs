@@ -103,10 +103,11 @@ use ::log::*;
 use client::Client;
 use cmd_center::run_cmd_center;
 use server::Server;
-use util::{point_to_string, Committee, Message, MsgType};
+use tokio::sync::broadcast;
+use util::{Committee, Message, MsgType};
+use signing::keyUpd::update_share;
 
 use tokio::sync::mpsc::unbounded_channel;
-use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::{sleep, Duration};
 // Testing only
 // use serde::{Deserialize, Serialize};
@@ -188,6 +189,8 @@ pub async fn main() {
                         }
                         MsgType::KeyUpd => {
                             // Start key updating
+                            // my_server.broadcast("", msg)
+
                         }
                         MsgType::KeyUpdCommitment => {
                             my_server.broadcast("keyupd_commitment".to_string(), msg).await;
@@ -261,6 +264,7 @@ pub async fn main() {
                         }
                         MsgType::KeyUpd => {
                             // Start key updating
+                            update_share(&mut my_client, vec![1u32,2u32,3u32], 3, msg.msg[0].clone()).await;
                         }
                         MsgType::KeyUpdCommitment => {
                             my_client.commitment_handler(msg);

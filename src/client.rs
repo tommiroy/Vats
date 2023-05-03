@@ -108,7 +108,9 @@ impl Client {
     }
     // Have not tested
     pub async fn send(&self, channel: String, msg: Message) -> String {
-        reqwest_send(self._client.clone(), self.central.clone(), channel, msg).await
+        reqwest_send(self._client.clone(), self.central.clone(), msg).await
+        // reqwest_send(self._client.clone(), self.central.clone(), channel, msg).await
+
     }
     //
     //--------------------------------------------------------------------------------
@@ -232,7 +234,7 @@ impl Client {
         let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
         let big_cx: Vec<RistrettoPoint> = msg.msg[2..].iter().map(|big_a| string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point")).collect();
 
-        if verify_sigma(&self, (big_rx, zx), self.context.clone()) {
+        if verify_sigma(self, (big_rx, zx), self.context.clone()) {
             self.commitments.insert(msg.sender.parse::<u32>().unwrap(), big_cx);
         }
         drop(msg);
@@ -256,15 +258,16 @@ async fn _serve(
     // Create routes for different algorithms
     let warp_routes = warp::post()
         // Match with multiple paths since their messages are handled similarly
-        .and(
-            warp::path("keygen")
-                .or(warp::path("nonce"))
-                .unify()
-                .or(warp::path("sign"))
-                .unify()
-                .or(warp::path("update"))
-                .unify(),
-        )
+        // .and(
+            // warp::path("keygen")
+            //     .or(warp::path("nonce"))
+            //     .unify()
+            //     .or(warp::path("sign"))
+            //     .unify()
+            //     .or(warp::path("update"))
+            //     .unify(),
+        // )
+        .and(warp::any())
         // Match with json since the message is a serialized struct
         .and(warp::body::json())
         // Just to include transmission channel
