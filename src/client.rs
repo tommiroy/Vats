@@ -244,6 +244,13 @@ impl Client {
         }
         drop(msg);
     }   
+
+
+    pub fn new_share_handler(&mut self, msg: Message) {
+        let new_share = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
+        verify_new_share(self, msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id"), new_share.clone())
+    }   
+
 }
 //
 //--------------------------------------------------------------------------------

@@ -273,11 +273,12 @@ pub async fn main() {
                             update_share(&mut my_client, vec![1u32,2u32,3u32], 3, msg.msg[0].clone()).await;
                         }
                         MsgType::KeyUpdCommitment => {
-                            info!("Got new commitment from {}", msg.sender);
+                            // info!("Got new commitment from {}", msg.sender);
                             my_client.commitment_handler(msg);
                         }
                         MsgType::KeyUpdNewShare => {
-                            info!("Got new share from {}", msg.sender);
+                            // info!("Got new share from {}", msg.sender);
+                            my_client.new_share_handler(msg);
                             // my_client.
                             // 
                         }
