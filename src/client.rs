@@ -7,6 +7,7 @@ use super::util::*;
 // use crate::signing::share_ver::share_ver;
 use super::signing::share_ver::share_ver;
 use super::signing::signOff::sign_off;
+use super::signing::keyUpd::*;
 use ::log::*;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
@@ -31,10 +32,15 @@ pub struct Client {
     pub pubkeys: HashMap<u32, RistrettoPoint>,
     // Vehicle pubkey
     pub vehkey: RistrettoPoint,
-    // r:s
-    bigR: Vec<RistrettoPoint>,
-    //
+    // big r:s
+    big_r: Vec<RistrettoPoint>,
+    // nonces
     rs: Vec<Scalar>,
+    // Commitments in key updating
+    pub commitments: HashMap::<u32, Vec<RistrettoPoint>>,
+    // Context 
+    context: String,
+
 }
 impl Client {
     pub async fn new(
@@ -84,8 +90,10 @@ impl Client {
                 pubkey: RistrettoPoint::identity(),
                 pubkeys: HashMap::<u32, RistrettoPoint>::new(),
                 vehkey: RistrettoPoint::identity(),
-                bigR: Vec::<RistrettoPoint>::new(),
+                big_r: Vec::<RistrettoPoint>::new(),
                 rs: Vec::<Scalar>::new(),
+                commitments: HashMap::<u32, Vec<RistrettoPoint>>::new(),
+                context: "".to_owned(),
             }
         } else {
             panic!("Cant build _client");
@@ -93,6 +101,10 @@ impl Client {
     }
     pub fn get_share(&self) -> Scalar {
         self.share
+    }
+
+    pub fn set_share(&mut self, share: Scalar) {
+        self.share = share;
     }
     // Have not tested
     pub async fn send(&self, channel: String, msg: Message) -> String {
@@ -150,16 +162,15 @@ impl Client {
     //
     pub async fn nonce_generator(&mut self, v: u32) {
         info!("Sent nonces to server");
-        let mut big_rs = Vec::<RistrettoPoint>::new();
 
-        (self.bigR, self.rs) = sign_off(v);
+        (self.big_r, self.rs) = sign_off(v);
 
         let nonce_list = Message {
             sender: self.id.clone().to_string(),
             receiver: "central".to_string(),
             msg_type: MsgType::Nonce,
             msg: self
-                .bigR
+                .big_r
                 .iter()
                 .map(|big_r| point_to_string(*big_r))
                 .collect(),
@@ -191,13 +202,13 @@ impl Client {
             .iter()
             .map(|x| string_to_point(x).unwrap())
             .collect::<Vec<RistrettoPoint>>();
-        let (big_r, (z, bigR_i)) = sign_on(
+        let (big_r, (z, big_ri)) = sign_on(
             self.clone(),
             self.clone().rs,
             out,
             msg_to_sign.to_owned(),
             committee,
-            self.clone().bigR,
+            self.big_r.clone(),
         );
         info!(
             "Individual signature: {:?}",
@@ -210,11 +221,22 @@ impl Client {
             msg: vec![
                 point_to_string(big_r),
                 scalar_to_string(&z),
-                point_to_string(bigR_i),
+                point_to_string(big_ri),
             ],
         };
         self.send("signagg".to_string(), sig_msg).await;
     }
+
+    pub fn commitment_handler(&mut self, msg: Message) {
+        let big_rx: RistrettoPoint = string_to_point(&msg.msg[0]).expect("client-commitment_handler: Cannot convert to point");
+        let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
+        let big_cx: Vec<RistrettoPoint> = msg.msg[2..].iter().map(|big_a| string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point")).collect();
+
+        if verify_sigma(&self, (big_rx, zx), self.context.clone()) {
+            self.commitments.insert(msg.sender.parse::<u32>().unwrap(), big_cx);
+        }
+        drop(msg);
+    }   
 }
 //
 //--------------------------------------------------------------------------------

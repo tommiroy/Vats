@@ -94,23 +94,6 @@ pub fn dealer(
 
 // #################### Helper functions ###########################
 
-// Compute larange coefficient
-// Used in key aggregation and signing
-pub fn compute_lagrange_coefficient(shares: Vec<(u32, Scalar)>, x0: u32) -> Scalar {
-    let mut lagrange_coefficient = Scalar::one();
-
-    // Standard lagrange coefficient calculation
-    // https://en.wikipedia.org/wiki/Lagrange_polynomial
-    for (x1, _) in shares {
-        if x1 != x0 {
-            println!("x1={}   x0={}", x1, x0);
-            let calc = Scalar::from(x1) * (Scalar::from(x1) - Scalar::from(x0)).invert();
-            lagrange_coefficient *= calc;
-        }
-    }
-    lagrange_coefficient
-}
-
 fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
     let mut result = Scalar::one();
     for _ in 0..exp {

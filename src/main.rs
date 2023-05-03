@@ -241,17 +241,17 @@ pub async fn main() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             // println!("KeyGen type: {:?}", msg.msg);
-                            &my_client.init(msg.msg);
-                            &my_client.nonce_generator(2).await;
+                            my_client.init(msg.msg);
+                            my_client.nonce_generator(2).await;
                             // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
-                            &my_client.nonce_generator(2).await;
+                            my_client.nonce_generator(2).await;
                             println!("Nonce type: {:?}", msg.msg);
                             // todo!("Add nonce for keygen");
                         }
                         MsgType::Sign => {
-                            &my_client.clone().sign_msg(msg.msg).await;
+                            my_client.clone().sign_msg(msg.msg).await;
                             // &my_client.nonce_generator(2).await;
                             // println!("Sign type: {:?}", msg.msg);
                             // // todo!("Add sign for keygen");
@@ -263,8 +263,7 @@ pub async fn main() {
                             // Start key updating
                         }
                         MsgType::KeyUpdCommitment => {
-                            println!("Update type: {:?}", msg.msg);
-                            // todo!("Add update for keygen");
+                            my_client.commitment_handler(msg);
                         }
                         MsgType::KeyUpdNewShare => {
                             // 
