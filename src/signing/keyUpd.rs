@@ -16,7 +16,7 @@ use super::super::util::*;
 
 
 
-pub async fn update_share(signer:&mut Client, _participants: Vec<u32>, t: usize, context: String) -> bool{
+pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, context: String) -> bool{
     let mut rng: OsRng = OsRng;
 
     // Dealer samples t random values t-1 a   ----> t = 3
@@ -40,36 +40,36 @@ pub async fn update_share(signer:&mut Client, _participants: Vec<u32>, t: usize,
         new_shares.insert(i, share);
     }
 
+    
+    // signer.commitments.insert(signer.id, big_as.clone());
+    // Generate Nonce k
+    let k = Scalar::random(&mut rng);
+    
+    // Compute Response R = G^k
+    let big_ri = &RISTRETTO_BASEPOINT_TABLE * &k;
+    
+    // Compute Challange c = H(i,Context,g^a_{i0}, Ri)
+    let ci: Scalar = hash_key(signer.id, context.clone(), signer.pubkey, big_ri);
+    info!("update_share: my_pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
+    
+    info!("update_share: c_{} {}", signer.id, scalar_to_string(&ci));
+    info!("update_share: context_{} {}", signer.id, context.clone());
+    info!("update_share: pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
+    info!("update_share: big_ri{} {}", signer.id, point_to_string(big_ri));
+    
+    // Compute mu = k + a_{i0} * ci
+    let zi = k + a[0] * ci;
+    // warn!("rhs{}: {}", signer.id, point_to_string(&RISTRETTO_BASEPOINT_TABLE*&zi.clone()));
+    // warn!("lhs{} {}", signer.id, point_to_string(big_ri+big_as[0]*ci));
+    
+    
     // Generate the public commitments which will be broadcasted 0<=j<=t
     let mut big_as = Vec::with_capacity(t-1);
     for aj in a.iter() {
         big_as.push(&RISTRETTO_BASEPOINT_TABLE * aj);
     }
 
-    // signer.commitments.insert(signer.id, big_as.clone());
-    // Generate Nonce k
-    let k = Scalar::random(&mut rng);
-
-    // Compute Response R = G^k
-    let big_ri = &RISTRETTO_BASEPOINT_TABLE * &k;
-
-    // Compute Challange c = H(i,Context,g^a_{i0}, Ri)
-    let ci: Scalar = hash_key(signer.id, context.clone(), big_as[0], big_ri);
-    warn!("update_share: my_pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
-
-    warn!("update_share: c_{} {}", signer.id, scalar_to_string(&ci));
-    warn!("update_share: context_{} {}", signer.id, context.clone());
-    warn!("update_share: pubkey_{} {}", signer.id, point_to_string(big_as[0]));
-    warn!("update_share: big_ri{} {}", signer.id, point_to_string(big_ri));
-
-    // Compute mu = k + a_{i0} * ci
-    let zi = k + a[0] * ci;
-    // warn!("rhs{}: {}", signer.id, point_to_string(&RISTRETTO_BASEPOINT_TABLE*&zi.clone()));
-    // warn!("lhs{} {}", signer.id, point_to_string(big_ri+big_as[0]*ci));
-
-
-
-    // Broadcast commitments and signature
+    // Broadcast commitments and sigma
     let mut msg_body = Vec::<String>::new();
     // commitments.iter().for_each(|commitment| msg_body.push(point_to_string(*commitment)));
     msg_body.push(point_to_string(big_ri));
@@ -123,17 +123,17 @@ pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), context_string
 
     if !res {
 
-        warn!("verify_sigma: c_{} {}", sender_id, scalar_to_string(&c));
-        warn!("verify_sigma: context_string_{}: {}",sender_id, context_string);
-        warn!("verify_sigma: pubkey_{} {}", sender_id, point_to_string(*me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")));
-        warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));      
-        panic!("Faulty COMMITMENT")
+        info!("verify_sigma: c_{} {}", sender_id, scalar_to_string(&c));
+        info!("verify_sigma: context_string_{}: {}",sender_id, context_string);
+        info!("verify_sigma: pubkey_{} {}", sender_id, point_to_string(*me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")));
+        info!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));      
+        info!("Faulty COMMITMENT")
     }
     res
 }
 
 
-pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) {
+pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) -> bool {
     let mut rhs = RistrettoPoint::identity();
     if me.commitments.contains_key(&sender_id) {
         // for (k, &big_a) in me.commitments.get(&sender_id).iter().enumerate() {
@@ -148,15 +148,16 @@ pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) {
 
     // warn!("Verification-lhs of {}: {}",sender_id,  point_to_string(&RISTRETTO_BASEPOINT_TABLE * &new_share));
     // warn!("Verification-rhs of {}: {}",sender_id,  point_to_string(rhs));
-
-    if &RISTRETTO_BASEPOINT_TABLE * &new_share == rhs {
-        // me.set_share(me.get_share()+ new_share*compute_lagrange_coefficient(Committee::new(me.pubkeys.clone()), me.id));
-        // me.pubkey = &RISTRETTO_BASEPOINT_TABLE * &me.get_share();
-        // me.pubkeys.insert(me.id,me.pubkey);
+    let res = &RISTRETTO_BASEPOINT_TABLE * &new_share == rhs;
+    if res {
+        me.set_share(me.get_share()+ new_share*compute_lagrange_coefficient(Committee::new(me.pubkeys.clone()), me.id));
+        me.pubkey = &RISTRETTO_BASEPOINT_TABLE * &me.get_share();
+        me.pubkeys.insert(me.id,me.pubkey);
         info!("New Share from {sender_id} added");
     } else {
         info!("Cannot add new share from {sender_id}");
     }
+    res
 }
 
 
@@ -169,15 +170,16 @@ pub fn update_pubkeys(me: &mut Client) {
             if me.commitments.contains_key(&x) {
                 let mut temp = RistrettoPoint::default();
                 for (k, big_a) in me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").iter().enumerate() {
-                    temp += big_a*Scalar::from(x)*Scalar::from(k as u32);
+                    temp += big_a*scalar_pow(Scalar::from(x), k as u32);
                 }
                 new_pubkey += temp*compute_lagrange_coefficient(com.clone(), j);
             } else {
-                new_pubkey += pubkey*compute_lagrange_coefficient(com.clone(), j)*Scalar::from(x);
+                new_pubkey += pubkey*scalar_pow(compute_lagrange_coefficient(com.clone(), j), x);
 
             }
         }
         new_pubkeys.insert(x, new_pubkey);
     }
-    me.pubkeys = new_pubkeys;
+    me.pubkey = *me.pubkeys.get(&me.id).unwrap();
+    info!("pubkeys updated after new shares");
 }

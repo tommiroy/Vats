@@ -103,7 +103,6 @@ use ::log::*;
 use client::Client;
 use cmd_center::run_cmd_center;
 use server::Server;
-use tokio::sync::broadcast;
 use util::{Committee, Message, MsgType};
 use signing::keyUpd::update_share;
 
@@ -189,11 +188,14 @@ pub async fn main() {
                         }
                         MsgType::KeyUpd => {
                             // Start key updating
+                            let mut new_msg: Vec<String> = msg.msg.clone();
+                            new_msg.push("1,2,3,4".to_owned());
+
                             my_server.broadcast(Message {
                                 sender: "SA".to_string(),
                                 receiver: "all".to_string(),
                                 msg_type: MsgType::KeyUpd, 
-                                msg: msg.msg
+                                msg: new_msg,
                             }).await;
 
                         }
@@ -204,7 +206,9 @@ pub async fn main() {
                         MsgType::KeyUpdNewShare => {
                             my_server.send(my_server.clients.get(&msg.receiver.parse::<u32>().unwrap()).expect("main: Cannot find client").clone(), msg).await;
                         }
-
+                        MsgType::KeyUpdNewPubkey => {
+                            my_server.new_pubkey_handler(msg);
+                        }
                         _ => {
                             println!("Placeholder")
                         }
@@ -269,8 +273,11 @@ pub async fn main() {
                         }
                         MsgType::KeyUpd => {
                             // Start key updating
-                            my_client.context = msg.msg[0].clone();
-                            update_share(&mut my_client, vec![1u32,2u32,3u32], 3, msg.msg[0].clone()).await;
+                            let new_context = msg.msg[0].clone();
+                            my_client.context = new_context.clone();
+                            let new_com: Vec<u32> = msg.msg[1].clone().split(',').into_iter().map(|id| id.parse::<u32>().expect("main-client: Cannot parse id")).collect();
+                            my_client.keyupd_committee = new_com.clone();
+                            update_share(&mut my_client, new_com, 3, new_context).await;
                         }
                         MsgType::KeyUpdCommitment => {
                             // info!("Got new commitment from {}", msg.sender);
@@ -278,10 +285,11 @@ pub async fn main() {
                         }
                         MsgType::KeyUpdNewShare => {
                             // info!("Got new share from {}", msg.sender);
-                            my_client.new_share_handler(msg);
+                            my_client.new_share_handler(msg).await;
                             // my_client.
                             // 
                         }
+                        _ => {}
                     }
                 } else {
                     // Just for debugging

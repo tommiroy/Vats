@@ -321,6 +321,13 @@ impl Server {
         .await;
     }
 
+    pub fn new_pubkey_handler(&mut self, msg: Message) {
+        let k = msg.sender.parse::<u32>().unwrap();
+        let v = string_to_point(&msg.msg[0].clone()).unwrap();
+        self.pubkeys.insert(k, v).unwrap();
+        info!("New pubkey receieved from {k}: {}", point_to_string(v));
+    }
+
 }
 
 async fn _serve(

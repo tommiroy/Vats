@@ -36,8 +36,13 @@ pub struct Client {
     big_r: Vec<RistrettoPoint>,
     // nonces
     rs: Vec<Scalar>,
+    // ------------ Key Updating --------------
     // Commitments in key updating
     pub commitments: HashMap::<u32, Vec<RistrettoPoint>>,
+    pub commitments_msg: Vec<Message>,
+    pub new_share_msg: Vec<Message>,
+    // Key updating committee
+    pub keyupd_committee: Vec<u32>,
     // Context 
     pub context: String,
 
@@ -93,6 +98,9 @@ impl Client {
                 big_r: Vec::<RistrettoPoint>::new(),
                 rs: Vec::<Scalar>::new(),
                 commitments: HashMap::<u32, Vec<RistrettoPoint>>::new(),
+                commitments_msg: Vec::<Message>::new(),
+                new_share_msg: Vec::<Message>::new(),
+                keyupd_committee: Vec::<u32>::new(),
                 context: "".to_owned(),
             }
         } else {
@@ -230,26 +238,45 @@ impl Client {
     }
 
     pub fn commitment_handler(&mut self, msg: Message) {
-        let big_rx: RistrettoPoint = string_to_point(&msg.msg[0]).expect("client-commitment_handler: Cannot convert to point");
-        let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
-        let mut big_cx: Vec<RistrettoPoint> = Vec::<RistrettoPoint>::new();
-        let _: Vec<_> = msg.msg[2..].iter().map(|big_a| big_cx.push(string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point"))).collect();
-        // info!("A0_{}: {}", msg.sender,point_to_string(big_cx[0]));
-        if verify_sigma(self, (big_rx, zx), self.context.clone(), msg.sender.parse::<u32>().expect("client-commitment_handler: Cannot parse id")) {
-            self.commitments.insert(msg.sender.parse::<u32>().unwrap(), big_cx);
-            info!("New commitment from {} added.", msg.sender);
-        } else {
-            info!("Commitment Verification from {} failed.", msg.sender);
-            info!("length of big_cx: {}", big_cx.len());
+        self.commitments_msg.push(msg);
+        // check that all committtee members ar inside the commitments
+        if self.commitments_msg.len() == self.keyupd_committee.len() {
+            for msg in self.commitments_msg.clone(){
+                let big_rx: RistrettoPoint = string_to_point(&msg.msg[0]).expect("client-commitment_handler: Cannot convert to point");
+                let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
+                let mut big_cx: Vec<RistrettoPoint> = Vec::<RistrettoPoint>::new();
+                let _: Vec<_> = msg.msg[2..].iter().map(|big_a| big_cx.push(string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point"))).collect();
+                self.commitments.insert(msg.sender.parse::<u32>().unwrap(), big_cx);
 
+                // check that all committtee members ar inside the commitments
+
+                // warn!("Commitments from all committee members received. {:?}", self.commitments.keys());
+                if verify_sigma(self, (big_rx, zx), self.context.clone(), msg.sender.parse::<u32>().unwrap()) {
+                    info!("New commitment from {} added.",msg.sender.parse::<u32>().unwrap());
+                } else {
+                    info!("Commitment Verification from {} failed.", msg.sender.parse::<u32>().unwrap());
+                    self.commitments.remove(&msg.sender.parse::<u32>().unwrap());
+                }
+            }
+            self.commitments_msg = Vec::<Message>::new();
         }
-        // drop(msg);
     }   
 
 
-    pub fn new_share_handler(&mut self, msg: Message) {
-        let new_share = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
-        verify_new_share(self, msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id"), new_share)
+    pub async fn new_share_handler(&mut self, msg: Message) {
+        self.new_share_msg.push(msg);
+        if self.new_share_msg.len() == self.keyupd_committee.len() {
+            for msg in self.new_share_msg.clone() {
+                let new_share = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
+                verify_new_share(self, msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id"), new_share);
+            }
+            update_pubkeys(self);
+            for (id, pubkey) in self.pubkeys.clone() {
+                info!("Pubkey of {id}: {}", point_to_string(pubkey));
+            }
+            self.send("channel".to_string(), Message { sender: self.id.to_string(), receiver: "()".to_string(), msg_type: MsgType::KeyUpdNewPubkey, msg: vec![point_to_string(self.pubkey)] }).await;
+
+        }
     }   
 
 }
