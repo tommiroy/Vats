@@ -170,7 +170,7 @@ impl Server {
                 msg: keys,
             };
 
-            info!("Sending message: {:?}", keygen_msg.msg);
+            // info!("Sending message: {:?}", keygen_msg.msg);
 
             self.send(node, keygen_msg).await;
         }
@@ -181,7 +181,7 @@ impl Server {
     // handles recieved nonces from the clients
     //
     pub async fn nonce_handler(&mut self, msg: Message) {
-        info!("Recieved Nonces: {:?}", msg.msg);
+        // info!("Recieved Nonces: {:?}", msg.msg);
         self.nonces.insert(
             msg.sender.parse::<u32>().unwrap(),
             msg.msg
@@ -284,15 +284,15 @@ impl Server {
         );
 
         if self.partial_sigs.len() >= t {
-            let signature = sign_agg2(self);
-            match signature.clone() {
-                Ok(sign) => {
-                    println!("YAAAAAAAAAAAAAAAAAAYYYYYYYYYYYYYY");
-                }
-                Err(cheaters) => {
-                    println!("CHEATERS!!!!!");
-                }
-            }
+            let signature: Result<(RistrettoPoint, Scalar), Vec<u32>> = sign_agg2(self);
+            // match signature.clone() {
+            //     Ok(sign) => {
+            //         println!("SIGNATURE VERIFIED!!!!");
+            //     }
+            //     Err(cheaters) => {
+            //         println!("CHEATERS!!!!!");
+            //     }
+            // }
             signature
         } else {
             Err(Vec::<u32>::new())

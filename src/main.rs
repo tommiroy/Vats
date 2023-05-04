@@ -250,7 +250,7 @@ pub async fn main() {
                 };
 
                 if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
-                    info!("msg.sender in main: {}", msg.sender);
+                    // info!("msg.sender in main: {}", msg.sender);
                     if msg.sender.parse::<u32>().unwrap() == my_client.id {
                         continue;
                     }

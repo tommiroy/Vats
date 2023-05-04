@@ -172,7 +172,7 @@ impl Client {
     // generate nonces and send to server
     //
     pub async fn nonce_generator(&mut self, v: u32) {
-        info!("Sent nonces to server");
+        // info!("Sent nonces to server");
 
         (self.big_r, self.rs) = sign_off(v);
 
@@ -221,10 +221,10 @@ impl Client {
             committee,
             self.big_r.clone(),
         );
-        info!(
-            "Individual signature: {:?}",
-            (point_to_string(big_r), scalar_to_string(&z))
-        );
+        // info!(
+        //     "Individual signature: {:?}",
+        //     (point_to_string(big_r), scalar_to_string(&z))
+        // );
         let sig_msg = Message {
             sender: self.id.to_string(),
             receiver: "0".to_string(),
@@ -247,13 +247,13 @@ impl Client {
                 let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
                 let mut big_cx: Vec<RistrettoPoint> = Vec::<RistrettoPoint>::new();
                 let _: Vec<_> = msg.msg[2..].iter().map(|big_a| big_cx.push(string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point"))).collect();
-                self.commitments.insert(msg.sender.parse::<u32>().unwrap(), big_cx);
+                self.commitments.insert(msg.sender.parse::<u32>().unwrap(), big_cx.clone());
 
                 // check that all committtee members ar inside the commitments
-
+                let big_a = big_cx.clone()[0];
                 // warn!("Commitments from all committee members received. {:?}", self.commitments.keys());
-                if verify_sigma(self, (big_rx, zx), self.context.clone(), msg.sender.parse::<u32>().unwrap()) {
-                    info!("New commitment from {} added.",msg.sender.parse::<u32>().unwrap());
+                if verify_sigma(self, (big_rx, zx), big_a, self.context.clone(), msg.sender.parse::<u32>().unwrap()) {
+                    // info!("New commitment from {} added.",msg.sender.parse::<u32>().unwrap());
                 } else {
                     info!("Commitment Verification from {} failed.", msg.sender.parse::<u32>().unwrap());
                     self.commitments.remove(&msg.sender.parse::<u32>().unwrap());
@@ -268,24 +268,27 @@ impl Client {
         self.new_share_msg.push(msg);
         if self.new_share_msg.len() == self.keyupd_committee.len()-1 {
             let mut my_new_share = Scalar::zero();
+            // let mut my_new_share = self.get_share();
+
             for msg in self.new_share_msg.clone() {
                 let new_share = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
                 let sender_id = msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id");
+                
+                // Upon receiving (i, fx(i)), Pi verifies their shares by calculating:
                 if verify_new_share(self, sender_id, new_share) {
                     my_new_share += new_share*compute_lagrange_coefficient(Committee::new(self.pubkeys.clone()), sender_id);
                 }
             }
-            update_pubkeys(self);
+            // update_pubkeys(self);
             
             self.set_share(my_new_share);
+            // Then Pi stores si securely, and deletes each fx(i).
+            self.new_share_msg = Vec::<Message>::new(); 
+            info!("Client: New share updated");
+            // Calculate and public key:
             self.pubkey = &RISTRETTO_BASEPOINT_TABLE*&self.get_share();
             self.pubkeys.insert(self.id, self.pubkey);
-            info!("Pubkey from share: {}\nPubkey from calculation: {}", point_to_string(&RISTRETTO_BASEPOINT_TABLE*&self.get_share()), point_to_string(self.pubkey));
 
-
-            for (id, pubkey) in self.pubkeys.clone() {
-                info!("Pubkey of {id}: {}", point_to_string(pubkey));
-            }
             self.send("channel".to_string(), Message { sender: self.id.to_string(), receiver: "()".to_string(), msg_type: MsgType::KeyUpdNewPubkey, msg: vec![point_to_string(self.pubkey)] }).await;
 
         }

@@ -22,6 +22,7 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     // Dealer samples t random values t-1 a   ----> t = 3
     let mut a: Vec<Scalar> = Vec::with_capacity(t);
     a.push(signer.get_share());
+    // a.push(Scalar::zero());
     for _ in 1..(t-1) {
         a.push(Scalar::random(&mut rng));
     }
@@ -39,7 +40,9 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
         }
         new_shares.insert(i, share);
     }
-
+    // Manually add our share to the share message list in client
+    let msg: Message = Message {sender: signer.id.to_string(), receiver: signer.id.to_string(), msg_type: MsgType::KeyUpdNewShare, msg: vec![scalar_to_string(new_shares.get(&signer.id).expect("keyUpd: Cannot find participant"))]};
+    signer.new_share_msg.push(msg);
     
     // signer.commitments.insert(signer.id, big_as.clone());
     // Generate Nonce k
@@ -50,12 +53,12 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     
     // Compute Challange c = H(i,Context,g^a_{i0}, Ri)
     let ci: Scalar = hash_key(signer.id, context.clone(), signer.pubkey, big_ri);
-    info!("update_share: my_pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
+    // info!("update_share: my_pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
     
-    info!("update_share: c_{} {}", signer.id, scalar_to_string(&ci));
-    info!("update_share: context_{} {}", signer.id, context.clone());
-    info!("update_share: pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
-    info!("update_share: big_ri{} {}", signer.id, point_to_string(big_ri));
+    // info!("update_share: c_{} {}", signer.id, scalar_to_string(&ci));
+    // info!("update_share: context_{} {}", signer.id, context.clone());
+    // info!("update_share: pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
+    // info!("update_share: big_ri{} {}", signer.id, point_to_string(big_ri));
     
     // Compute mu = k + a_{i0} * ci
     let zi = k + a[0] * ci;
@@ -64,10 +67,12 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     
     
     // Generate the public commitments which will be broadcasted 0<=j<=t
-    let mut big_as = Vec::with_capacity(t-1);
+    let mut big_as: Vec<RistrettoPoint> = Vec::with_capacity(t-1);
     for aj in a.iter() {
         big_as.push(&RISTRETTO_BASEPOINT_TABLE * aj);
     }
+    // signer.commitments.insert(signer.id, big_as.clone());
+
 
     // Broadcast commitments and sigma
     let mut msg_body = Vec::<String>::new();
@@ -79,6 +84,7 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     // warn!("Length of big_as: {}", big_as.len());
     // warn!("Length of body: {}", msg_body.len());
 
+    // Broadcast commitments
     let msg = Message {sender: signer.id.to_string(), receiver: "broadcast".to_string(), msg_type: MsgType::KeyUpdCommitment, msg: msg_body};
     signer.send("keyupd_commitment".to_owned(), msg).await;
     // info!("Sent commitments");
@@ -86,40 +92,27 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
 
     // -------------------------- ROUND 2 ----------------------------------------
 
+    // Send new share to respective participant
     for &participant in signer.pubkeys.keys() {
         if new_shares.contains_key(&participant) {
             let msg: Message = Message {sender: signer.id.to_string(), receiver: participant.to_string(), msg_type: MsgType::KeyUpdNewShare, msg: vec![scalar_to_string(new_shares.get(&participant).expect("keyUpd: Cannot find participant"))]};
             signer.send("keyupd_newshare".to_string(), msg).await;
         }
-
-        let mut rhs = RistrettoPoint::identity();
-        for (k, &big_a) in big_as.iter().enumerate() {
-            rhs += big_a*scalar_pow(Scalar::from(participant), k as u32);
-        }
-
-
-        // warn!("Gen-lhs of {} for {}: {}", signer.id, participant.to_string(),  point_to_string(&RISTRETTO_BASEPOINT_TABLE * new_shares.get(&participant).unwrap()));
-        // warn!("Gen-rhs of {} for {}: {}", signer.id, participant.to_string(),  point_to_string(rhs));
-
-
     }
-
-
-    // info!("Sent new shares");
 
     true
 
 }
 
-pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), context_string: String, sender_id: u32) -> bool {
+pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), big_a : RistrettoPoint, context_string: String, sender_id: u32) -> bool {
     let (big_r, zx) = sigma;
     // warn!("zi_{}: {}", sender_id, scalar_to_string(&zx.clone()));
     
-    let c = hash_key(sender_id, context_string.clone(), *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys"), big_r.clone());
+    let c = hash_key(sender_id, context_string.clone(), big_a, big_r);
     
     // warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));
     // warn!("verify_sigma: rhs_{}: {}", sender_id, point_to_string(&RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*(-c)));
-    let res = big_r == &RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*(-c);
+    let res = big_r == &RISTRETTO_BASEPOINT_TABLE * &zx + big_a*(-c);
 
     if !res {
 
@@ -146,21 +139,7 @@ pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) -> b
         // warn!("Not Found commitment from {sender_id}");
     }
 
-    // warn!("Verification-lhs of {}: {}",sender_id,  point_to_string(&RISTRETTO_BASEPOINT_TABLE * &new_share));
-    // warn!("Verification-rhs of {}: {}",sender_id,  point_to_string(rhs));
-    let res = &RISTRETTO_BASEPOINT_TABLE * &new_share == rhs;
-    // if res {
-    //     // me.set_share(new_share*compute_lagrange_coefficient(Committee::new(me.pubkeys.clone()), me.id));
-    //     // update_pubkeys(me);
-    //     // me.pubkey = &RISTRETTO_BASEPOINT_TABLE * &me.get_share();
-    //     // me.pubkeys.insert(me.id,me.pubkey);
-    //     // broadcast new pk
-    //     info!("New Share from {sender_id} added");
-    // } else {
-    //     info!("Cannot add new share from {sender_id}");
-    // }
-    
-    res
+    &RISTRETTO_BASEPOINT_TABLE * &new_share == rhs
 }
 
 
