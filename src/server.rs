@@ -113,7 +113,11 @@ impl Server {
     // Broadcast a message to all nodes in clients
     pub async fn broadcast(&self, msg: Message) {
         for node in self.clients.clone() {
+            // println!("broadcast: sender: {}", msg.sender);
+            // println!("broadcast: msg_type: {:?}", msg.msg_type);
+            // if node.0 != msg.sender.parse::<u32>().unwrap() {
             let res = self.send(node.1.clone(), msg.clone()).await;
+            // }
             // println!("Sending message to {}: \n Response: {:?}", node, res);
         }
     }

@@ -232,7 +232,7 @@ impl Client {
     pub fn commitment_handler(&mut self, msg: Message) {
         let big_rx: RistrettoPoint = string_to_point(&msg.msg[0]).expect("client-commitment_handler: Cannot convert to point");
         let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
-        let mut big_cx = Vec::<RistrettoPoint>::new();
+        let mut big_cx: Vec<RistrettoPoint> = Vec::<RistrettoPoint>::new();
         let _: Vec<_> = msg.msg[2..].iter().map(|big_a| big_cx.push(string_to_point(big_a).expect("client-commitment_handler: Cannot convert to point"))).collect();
         // info!("A0_{}: {}", msg.sender,point_to_string(big_cx[0]));
         if verify_sigma(self, (big_rx, zx), self.context.clone(), msg.sender.parse::<u32>().expect("client-commitment_handler: Cannot parse id")) {
@@ -240,15 +240,16 @@ impl Client {
             info!("New commitment from {} added.", msg.sender);
         } else {
             info!("Commitment Verification from {} failed.", msg.sender);
+            info!("length of big_cx: {}", big_cx.len());
 
         }
-        drop(msg);
+        // drop(msg);
     }   
 
 
     pub fn new_share_handler(&mut self, msg: Message) {
         let new_share = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
-        verify_new_share(self, msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id"), new_share.clone())
+        verify_new_share(self, msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id"), new_share)
     }   
 
 }

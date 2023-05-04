@@ -13,42 +13,7 @@ use super::super::client::Client;
 use super::super::util::*;
 
 
-pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), context_string: String, sender_id: u32) -> bool {
-    let (big_r, zx) = sigma;
-    // warn!("zi_{}: {}", sender_id, scalar_to_string(&zx.clone()));
-    
-    let c = hash_key(sender_id, context_string.clone(), *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys"), big_r.clone());
-    // warn!("verify_sigma: c_{} {}", sender_id, scalar_to_string(&c));
-    // warn!("verify_sigma: context_string_{}: {}",sender_id, context_string);
-    // warn!("verify_sigma: pubkey_{} {}", sender_id, point_to_string(*me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")));
-    // warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));
-    
-    // warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));
-    // warn!("verify_sigma: rhs_{}: {}", sender_id, point_to_string(&RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*c.invert()));
-    big_r == &RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*(-c)
-}
 
-pub fn update_pubkeys(me: &mut Client) {
-    let com = Committee::new(me.pubkeys.clone());
-    let mut new_pubkeys: HashMap<u32, RistrettoPoint> = HashMap::<u32, RistrettoPoint>::new();
-    for &x in me.pubkeys.keys().clone() {
-        let mut new_pubkey = RistrettoPoint::default();
-        for (j, pubkey) in me.pubkeys.clone() {
-            if me.commitments.contains_key(&x) {
-                let mut temp = RistrettoPoint::default();
-                for (k, big_a) in me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").iter().enumerate() {
-                    temp += big_a*Scalar::from(x)*Scalar::from(k as u32);
-                }
-                new_pubkey += temp*compute_lagrange_coefficient(com.clone(), j);
-            } else {
-                new_pubkey += pubkey*compute_lagrange_coefficient(com.clone(), j)*Scalar::from(x);
-
-            }
-        }
-        new_pubkeys.insert(x, new_pubkey);
-    }
-    me.pubkeys = new_pubkeys;
-}
 
 
 pub async fn update_share(signer:&mut Client, _participants: Vec<u32>, t: usize, context: String) -> bool{
@@ -90,10 +55,12 @@ pub async fn update_share(signer:&mut Client, _participants: Vec<u32>, t: usize,
 
     // Compute Challange c = H(i,Context,g^a_{i0}, Ri)
     let ci: Scalar = hash_key(signer.id, context.clone(), big_as[0], big_ri);
-    // warn!("update_share: c_{} {}", signer.id, scalar_to_string(&ci));
-    // warn!("update_share: context_{} {}", signer.id, context.clone());
-    // warn!("update_share: pubkey_{} {}", signer.id, point_to_string(big_as[0]));
-    // warn!("update_share: big_ri{} {}", signer.id, point_to_string(big_ri));
+    warn!("update_share: my_pubkey_{} {}", signer.id, point_to_string(signer.pubkey));
+
+    warn!("update_share: c_{} {}", signer.id, scalar_to_string(&ci));
+    warn!("update_share: context_{} {}", signer.id, context.clone());
+    warn!("update_share: pubkey_{} {}", signer.id, point_to_string(big_as[0]));
+    warn!("update_share: big_ri{} {}", signer.id, point_to_string(big_ri));
 
     // Compute mu = k + a_{i0} * ci
     let zi = k + a[0] * ci;
@@ -144,6 +111,26 @@ pub async fn update_share(signer:&mut Client, _participants: Vec<u32>, t: usize,
 
 }
 
+pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), context_string: String, sender_id: u32) -> bool {
+    let (big_r, zx) = sigma;
+    // warn!("zi_{}: {}", sender_id, scalar_to_string(&zx.clone()));
+    
+    let c = hash_key(sender_id, context_string.clone(), *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys"), big_r.clone());
+    
+    // warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));
+    // warn!("verify_sigma: rhs_{}: {}", sender_id, point_to_string(&RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*(-c)));
+    let res = big_r == &RISTRETTO_BASEPOINT_TABLE * &zx + *me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")*(-c);
+
+    if !res {
+
+        warn!("verify_sigma: c_{} {}", sender_id, scalar_to_string(&c));
+        warn!("verify_sigma: context_string_{}: {}",sender_id, context_string);
+        warn!("verify_sigma: pubkey_{} {}", sender_id, point_to_string(*me.pubkeys.get(&sender_id).expect("keyUpd-verify_sigma: Cannot find sender_id in pubkeys")));
+        warn!("verify_sigma: big_ri_{} {}", sender_id, point_to_string(big_r));      
+        panic!("Faulty COMMITMENT")
+    }
+    res
+}
 
 
 pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) {
@@ -163,11 +150,34 @@ pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) {
     // warn!("Verification-rhs of {}: {}",sender_id,  point_to_string(rhs));
 
     if &RISTRETTO_BASEPOINT_TABLE * &new_share == rhs {
-        me.set_share(me.get_share()+ new_share*compute_lagrange_coefficient(Committee::new(me.pubkeys.clone()), me.id));
-        me.pubkey = &RISTRETTO_BASEPOINT_TABLE * &me.get_share();
-        me.pubkeys.insert(me.id,me.pubkey);
+        // me.set_share(me.get_share()+ new_share*compute_lagrange_coefficient(Committee::new(me.pubkeys.clone()), me.id));
+        // me.pubkey = &RISTRETTO_BASEPOINT_TABLE * &me.get_share();
+        // me.pubkeys.insert(me.id,me.pubkey);
         info!("New Share from {sender_id} added");
     } else {
         info!("Cannot add new share from {sender_id}");
     }
+}
+
+
+pub fn update_pubkeys(me: &mut Client) {
+    let com = Committee::new(me.pubkeys.clone());
+    let mut new_pubkeys: HashMap<u32, RistrettoPoint> = HashMap::<u32, RistrettoPoint>::new();
+    for &x in me.pubkeys.keys().clone() {
+        let mut new_pubkey = RistrettoPoint::default();
+        for (j, pubkey) in me.pubkeys.clone() {
+            if me.commitments.contains_key(&x) {
+                let mut temp = RistrettoPoint::default();
+                for (k, big_a) in me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").iter().enumerate() {
+                    temp += big_a*Scalar::from(x)*Scalar::from(k as u32);
+                }
+                new_pubkey += temp*compute_lagrange_coefficient(com.clone(), j);
+            } else {
+                new_pubkey += pubkey*compute_lagrange_coefficient(com.clone(), j)*Scalar::from(x);
+
+            }
+        }
+        new_pubkeys.insert(x, new_pubkey);
+    }
+    me.pubkeys = new_pubkeys;
 }
