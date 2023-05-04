@@ -26,7 +26,7 @@ enum Mode {
 #[derive(Args, Debug)]
 struct ServerOption {
     /// Identity of the server: cert + key
-    #[arg(short('i'), long, default_value = "central")]
+    #[arg(short('i'), long, default_value = "0")]
     id: String,
 
     /// Identity of the server: cert + key
@@ -192,7 +192,7 @@ pub async fn main() {
                             new_msg.push("1,2,3,4".to_owned());
 
                             my_server.broadcast(Message {
-                                sender: "SA".to_string(),
+                                sender: "0".to_string(),
                                 receiver: "all".to_string(),
                                 msg_type: MsgType::KeyUpd, 
                                 msg: new_msg,
@@ -207,7 +207,8 @@ pub async fn main() {
                             my_server.send(my_server.clients.get(&msg.receiver.parse::<u32>().unwrap()).expect("main: Cannot find client").clone(), msg).await;
                         }
                         MsgType::KeyUpdNewPubkey => {
-                            my_server.new_pubkey_handler(msg);
+                            my_server.new_pubkey_handler(msg.clone());
+                            my_server.broadcast(msg).await;
                         }
                         _ => {
                             println!("Placeholder")
@@ -249,6 +250,10 @@ pub async fn main() {
                 };
 
                 if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
+                    info!("msg.sender in main: {}", msg.sender);
+                    if msg.sender.parse::<u32>().unwrap() == my_client.id {
+                        continue;
+                    }
                     // Match the message type and handle accordingly
                     match msg.msg_type {
                         MsgType::Keygen => {
@@ -281,14 +286,22 @@ pub async fn main() {
                         }
                         MsgType::KeyUpdCommitment => {
                             // info!("Got new commitment from {}", msg.sender);
-                            my_client.commitment_handler(msg);
+                            // if msg.sender.parse::<u32>().unwrap() != my_client.id {
+                                my_client.commitment_handler(msg);
+                            // }
                         }
                         MsgType::KeyUpdNewShare => {
                             // info!("Got new share from {}", msg.sender);
-                            my_client.new_share_handler(msg).await;
+                            // if msg.sender.parse::<u32>().unwrap() != my_client.id {
+                                my_client.new_share_handler(msg).await;
+                            // }
                             // my_client.
                             // 
                         }
+                        MsgType::KeyUpdNewPubkey => {
+                            my_client.new_pubkey_handler(msg);
+                        }
+
                         _ => {}
                     }
                 } else {

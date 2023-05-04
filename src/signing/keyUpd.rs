@@ -149,14 +149,17 @@ pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) -> b
     // warn!("Verification-lhs of {}: {}",sender_id,  point_to_string(&RISTRETTO_BASEPOINT_TABLE * &new_share));
     // warn!("Verification-rhs of {}: {}",sender_id,  point_to_string(rhs));
     let res = &RISTRETTO_BASEPOINT_TABLE * &new_share == rhs;
-    if res {
-        me.set_share(me.get_share()+ new_share*compute_lagrange_coefficient(Committee::new(me.pubkeys.clone()), me.id));
-        me.pubkey = &RISTRETTO_BASEPOINT_TABLE * &me.get_share();
-        me.pubkeys.insert(me.id,me.pubkey);
-        info!("New Share from {sender_id} added");
-    } else {
-        info!("Cannot add new share from {sender_id}");
-    }
+    // if res {
+    //     // me.set_share(new_share*compute_lagrange_coefficient(Committee::new(me.pubkeys.clone()), me.id));
+    //     // update_pubkeys(me);
+    //     // me.pubkey = &RISTRETTO_BASEPOINT_TABLE * &me.get_share();
+    //     // me.pubkeys.insert(me.id,me.pubkey);
+    //     // broadcast new pk
+    //     info!("New Share from {sender_id} added");
+    // } else {
+    //     info!("Cannot add new share from {sender_id}");
+    // }
+    
     res
 }
 
@@ -164,19 +167,20 @@ pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) -> b
 pub fn update_pubkeys(me: &mut Client) {
     let com = Committee::new(me.pubkeys.clone());
     let mut new_pubkeys: HashMap<u32, RistrettoPoint> = HashMap::<u32, RistrettoPoint>::new();
-    for &x in me.pubkeys.keys().clone() {
-        let mut new_pubkey = RistrettoPoint::default();
-        for (j, pubkey) in me.pubkeys.clone() {
-            if me.commitments.contains_key(&x) {
-                let mut temp = RistrettoPoint::default();
-                for (k, big_a) in me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").iter().enumerate() {
-                    temp += big_a*scalar_pow(Scalar::from(x), k as u32);
-                }
-                new_pubkey += temp*compute_lagrange_coefficient(com.clone(), j);
-            } else {
-                new_pubkey += pubkey*scalar_pow(compute_lagrange_coefficient(com.clone(), j), x);
-
+    for (x, pubkey) in me.pubkeys.clone() {
+        if x == me.id {
+            continue;
+        }
+        let mut new_pubkey = pubkey;
+        for (j, _) in me.pubkeys.clone() {
+            if j == me.id {
+                continue;
             }
+            let mut temp = RistrettoPoint::identity();
+            for (k, big_a) in me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").iter().enumerate() {
+                temp += big_a*scalar_pow(Scalar::from(x), k as u32);
+            }
+            new_pubkey += temp*compute_lagrange_coefficient(com.clone(), j);
         }
         new_pubkeys.insert(x, new_pubkey);
     }

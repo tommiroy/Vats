@@ -8,6 +8,7 @@ use super::util::*;
 use super::signing::share_ver::share_ver;
 use super::signing::signOff::sign_off;
 use super::signing::keyUpd::*;
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
 use ::log::*;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{ristretto::RistrettoPoint, traits::Identity};
@@ -177,7 +178,7 @@ impl Client {
 
         let nonce_list = Message {
             sender: self.id.clone().to_string(),
-            receiver: "central".to_string(),
+            receiver: "0".to_string(),
             msg_type: MsgType::Nonce,
             msg: self
                 .big_r
@@ -226,7 +227,7 @@ impl Client {
         );
         let sig_msg = Message {
             sender: self.id.to_string(),
-            receiver: "central".to_string(),
+            receiver: "0".to_string(),
             msg_type: MsgType::SignAgg,
             msg: vec![
                 point_to_string(big_r),
@@ -240,7 +241,7 @@ impl Client {
     pub fn commitment_handler(&mut self, msg: Message) {
         self.commitments_msg.push(msg);
         // check that all committtee members ar inside the commitments
-        if self.commitments_msg.len() == self.keyupd_committee.len() {
+        if self.commitments_msg.len() == self.keyupd_committee.len()-1 {
             for msg in self.commitments_msg.clone(){
                 let big_rx: RistrettoPoint = string_to_point(&msg.msg[0]).expect("client-commitment_handler: Cannot convert to point");
                 let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
@@ -265,19 +266,38 @@ impl Client {
 
     pub async fn new_share_handler(&mut self, msg: Message) {
         self.new_share_msg.push(msg);
-        if self.new_share_msg.len() == self.keyupd_committee.len() {
+        if self.new_share_msg.len() == self.keyupd_committee.len()-1 {
+            let mut my_new_share = Scalar::zero();
             for msg in self.new_share_msg.clone() {
                 let new_share = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
-                verify_new_share(self, msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id"), new_share);
+                let sender_id = msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id");
+                if verify_new_share(self, sender_id, new_share) {
+                    my_new_share += new_share*compute_lagrange_coefficient(Committee::new(self.pubkeys.clone()), sender_id);
+                }
             }
             update_pubkeys(self);
+            
+            self.set_share(my_new_share);
+            self.pubkey = &RISTRETTO_BASEPOINT_TABLE*&self.get_share();
+            self.pubkeys.insert(self.id, self.pubkey);
+            info!("Pubkey from share: {}\nPubkey from calculation: {}", point_to_string(&RISTRETTO_BASEPOINT_TABLE*&self.get_share()), point_to_string(self.pubkey));
+
+
             for (id, pubkey) in self.pubkeys.clone() {
                 info!("Pubkey of {id}: {}", point_to_string(pubkey));
             }
             self.send("channel".to_string(), Message { sender: self.id.to_string(), receiver: "()".to_string(), msg_type: MsgType::KeyUpdNewPubkey, msg: vec![point_to_string(self.pubkey)] }).await;
 
         }
-    }   
+    }
+
+    pub fn new_pubkey_handler(&mut self, msg: Message) {
+        let k = msg.sender.parse::<u32>().unwrap();
+        let v = string_to_point(&msg.msg[0].clone()).unwrap();
+        self.pubkeys.insert(k, v).unwrap();
+        info!("New pubkey receieved from {k}: {}", point_to_string(v));
+    }
+   
 
 }
 //

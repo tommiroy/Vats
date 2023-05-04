@@ -312,7 +312,7 @@ impl Server {
         self.broadcast(
             // "nonce".to_owned(),
             Message {
-                sender: "central".to_string(),
+                sender: "0".to_string(),
                 receiver: "all".to_string(),
                 msg_type: MsgType::Nonce,
                 msg: vec!["".to_string()],
