@@ -68,6 +68,7 @@ pub enum MsgType {
     KeyUpdCommitment,
     KeyUpdNewShare,
     KeyUpdNewPubkey,
+    Test,
 }
 
 // ######################################################

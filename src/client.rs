@@ -195,7 +195,7 @@ impl Client {
     //
     pub async fn sign_msg(&self, msg: Vec<String>) {
         let com_ids: Vec<u32> = msg[0]
-            .split(",")
+            .split(',')
             .map(|id| id.parse::<u32>().unwrap())
             .collect::<Vec<u32>>();
         // match these commitee ids with the keys in publickeys hasmap and create a committee
@@ -241,7 +241,7 @@ impl Client {
     pub fn commitment_handler(&mut self, msg: Message) {
         self.commitments_msg.push(msg);
         // check that all committtee members ar inside the commitments
-        if self.commitments_msg.len() == self.keyupd_committee.len()-1 {
+        if self.commitments_msg.len() == self.keyupd_committee.len() {
             for msg in self.commitments_msg.clone(){
                 let big_rx: RistrettoPoint = string_to_point(&msg.msg[0]).expect("client-commitment_handler: Cannot convert to point");
                 let zx: Scalar = string_to_scalar(&msg.msg[1]).expect("client-commitment_handler: Cannot convert to scalar");
@@ -266,25 +266,28 @@ impl Client {
 
     pub async fn new_share_handler(&mut self, msg: Message) {
         self.new_share_msg.push(msg);
-        if self.new_share_msg.len() == self.keyupd_committee.len()-1 {
-            let mut my_new_share = Scalar::zero();
+        if self.new_share_msg.len() == self.keyupd_committee.len() {
+            let mut si = Scalar::zero();
             // let mut my_new_share = self.get_share();
 
             for msg in self.new_share_msg.clone() {
-                let new_share = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
-                let sender_id = msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id");
-                
+                let f_xi = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
+                let x = msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id");
+                info!("New share received from {}: {}", x, msg.msg[0]);                
                 // Upon receiving (i, fx(i)), Pi verifies their shares by calculating:
-                if verify_new_share(self, sender_id, new_share) {
-                    my_new_share += new_share*compute_lagrange_coefficient(Committee::new(self.pubkeys.clone()), sender_id);
+                if verify_new_share(self, x, f_xi) {
+                    let lambda_x = compute_lagrange_coefficient(Committee::new(self.pubkeys.clone()), x);
+                    si += f_xi * lambda_x;
+                } else {
+                    info!("verification of new share failed!");
                 }
             }
             // update_pubkeys(self);
             
-            self.set_share(my_new_share);
+            self.set_share(si);
             // Then Pi stores si securely, and deletes each fx(i).
             self.new_share_msg = Vec::<Message>::new(); 
-            info!("Client: New share updated");
+            info!("Client: New share updated to: {:?}", scalar_to_string(&self.get_share()));
             // Calculate and public key:
             self.pubkey = &RISTRETTO_BASEPOINT_TABLE*&self.get_share();
             self.pubkeys.insert(self.id, self.pubkey);

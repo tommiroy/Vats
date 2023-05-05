@@ -44,6 +44,8 @@ pub struct Server {
     pub out: Vec<RistrettoPoint>,
     // Current Message
     pub m: String,
+    // TEST
+    pub test: HashMap<u32, Scalar>
 }
 
 impl Server {
@@ -94,6 +96,8 @@ impl Server {
                 partial_sigs: HashMap::<u32, (RistrettoPoint, (RistrettoPoint, Scalar))>::new(),
                 out: Vec::<RistrettoPoint>::new(),
                 m: String::new(),
+                // TEST
+                test: HashMap::<u32, Scalar>::new(),
             }
         } else {
             panic!("Cant build _client");

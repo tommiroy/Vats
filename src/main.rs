@@ -103,14 +103,20 @@ use ::log::*;
 use client::Client;
 use cmd_center::run_cmd_center;
 use server::Server;
-use util::{Committee, Message, MsgType};
+use util::{Committee, Message, MsgType, compute_lagrange_coefficient};
 use signing::keyUpd::update_share;
 
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::time::{sleep, Duration};
 // Testing only
 // use serde::{Deserialize, Serialize};
-
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
+// use curve25519_dalek::ristretto::CompressedRistretto;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::traits::Identity;
+use util::*;
+use rand::rngs::OsRng;
 /// ###################################################################
 /// Main Function
 /// ###################################################################
@@ -141,7 +147,16 @@ pub async fn main() {
             // Handle incoming message from tx channel
             sleep(Duration::from_millis(500)).await;
 
-            // deal out keys
+            // ----------------------- Test ----------------------------
+            // let mut rng: OsRng = OsRng;
+            // let var = Scalar::random(&mut rng);
+            // let com = Committee::new(my_server.pubkeys.clone());
+            // let lhs = var*compute_lagrange_coefficient(com.clone(), 3)*compute_lagrange_coefficient(com.clone(), 4);
+            // let rhs = var*compute_lagrange_coefficient(com.clone(), 4)*compute_lagrange_coefficient(com.clone(), 3);
+
+            // assert_eq!(lhs, rhs);
+            // info!("They Are Equal");
+            // ---------------------------------------------------------
 
             loop {
                 let Some(msg) = rx.recv().await else {
@@ -209,6 +224,9 @@ pub async fn main() {
                         MsgType::KeyUpdNewPubkey => {
                             my_server.new_pubkey_handler(msg.clone());
                             my_server.broadcast(msg).await;
+                        }
+                        MsgType::Test => {
+                            panic!("Do something here");
                         }
                         _ => {
                             println!("Placeholder")

@@ -24,10 +24,6 @@ pub fn ver(
         true
     } else {
         println!("#####################################\nSignature Verification Failed \n#####################################");
-        // println!(
-        //     "Signature Verification Failed: \n SHOULD BE :::::::::::: {:?} \n GOT :::::::::: {:?} \n",
-        //     rhs, lhs
-        // );
         false
     }
 }
