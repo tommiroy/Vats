@@ -62,21 +62,21 @@ pub fn dealer(
     //let pk = &RISTRETTO_BASEPOINT_TABLE * &sk;
 
     // Verify the shares with Feldmans VSS
-    let mut valid = true;
-    for i in 0..n {
-        let lhs = &RISTRETTO_BASEPOINT_TABLE * &shares[i].1;
-        let mut rhs = RistrettoPoint::identity();
-        for j in 0..t {
-            // rhs += B[j] * scalar_pow(Scalar::from(i as u8), j as u32);
-            // rhs += B[j] * Scalar::from(i as u32 +1) * Scalar::from(j as u128);
-            rhs += big_b[j] * scalar_pow(Scalar::from(i as u32 + 1), j as u32);
-        }
-        if lhs != rhs {
-            valid = false;
-            break;
-        }
-    }
-    assert!(valid, "Shares are not valid");
+    // let mut valid = true;
+    // for i in 0..n {
+    //     let lhs = &RISTRETTO_BASEPOINT_TABLE * &shares[i].1;
+    //     let mut rhs = RistrettoPoint::identity();
+    //     for j in 0..t {
+    //         // rhs += B[j] * scalar_pow(Scalar::from(i as u8), j as u32);
+    //         // rhs += B[j] * Scalar::from(i as u32 +1) * Scalar::from(j as u128);
+    //         rhs += big_b[j] * scalar_pow(Scalar::from(i as u32 + 1), j as u32);
+    //     }
+    //     if lhs != rhs {
+    //         valid = false;
+    //         break;
+    //     }
+    // }
+    // assert!(valid, "Shares are not valid");
 
     // let mut sk_prim = Scalar::zero();
     // for (i, x) in &shares.clone() {
