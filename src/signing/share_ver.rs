@@ -7,7 +7,7 @@ use log::{debug, error, info, trace, warn};
 
 
 // use rand::rngs::OsRng;
-use super::super::util::{eval_poly, scalar_pow};
+use super::super::util::{scalar_pow};
 pub fn share_ver(
     big_bs: Vec<RistrettoPoint>,
     my_id: u32,
@@ -18,27 +18,11 @@ pub fn share_ver(
     let lhs = &RISTRETTO_BASEPOINT_TABLE * &share;
     let mut rhs = RistrettoPoint::identity();
 
-    // for j in 0..t {
-    //     rhs += big_b[j] * scalar_pow(Scalar::from(my_id), j as u32);
-    // }
-    // if lhs != rhs {
-    //     valid = false;
-    // }
-
-        
+       
     for (j, big_b) in big_bs.iter().enumerate() {
         rhs += big_b * scalar_pow(Scalar::from(my_id), j as u32);
 
-        // rhs += big_b * Scalar::from(my_id.pow(j as u32));
-
-        // rhs += big_b * Scalar::from(my_id) * big_b * Scalar::from(j as u32);
-
     }
-    // if lhs != rhs {
-    //     valid = false;
-    // }
-
-    
 
     assert_eq!(lhs, rhs, "My share is not valid");
 
@@ -47,12 +31,3 @@ pub fn share_ver(
     info!("Successfully verified share and pk from dealer");
     (share, pk)
 }
-
-// #################### Helper functions ###########################
-// fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
-//     let mut result = Scalar::one();
-//     for _ in 0..exp {
-//         result *= base;
-//     }
-//     result
-// }

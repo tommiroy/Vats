@@ -4,7 +4,6 @@
 pub mod keyAgg;
 pub mod keyUpd;
 pub mod key_dealer;
-pub mod muSigCoef;
 pub mod share_ver;
 pub mod signAgg;
 pub mod signAgg2;
