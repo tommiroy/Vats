@@ -20,6 +20,9 @@ use std::net::SocketAddr;
 use tokio::sync::mpsc::UnboundedSender;
 use warp::*;
 
+use std::time::Instant;
+use std::fs::File;
+
 // #[derive(Clone, Deserialize, Debug, Serialize)]
 #[derive(Clone, Debug)]
 pub struct Server {
@@ -289,14 +292,7 @@ impl Server {
 
         if self.partial_sigs.len() >= t {
             let signature: Result<(RistrettoPoint, Scalar), Vec<u32>> = sign_agg2(self);
-            // match signature.clone() {
-            //     Ok(sign) => {
-            //         println!("SIGNATURE VERIFIED!!!!");
-            //     }
-            //     Err(cheaters) => {
-            //         println!("CHEATERS!!!!!");
-            //     }
-            // }
+
             signature
         } else {
             Err(Vec::<u32>::new())
@@ -348,19 +344,7 @@ async fn _serve(
     // Create routes for different algorithms
     let warp_routes = warp::post()
         // Match with multiple paths since their messages are handled similarly
-        // .and(
-            // warp::path("keygen")
-            //     .or(warp::path("nonce"))
-            //     .unify()
-            //     .or(warp::path("sign"))
-            //     .unify()
-            //     .or(warp::path("signagg"))
-            //     .unify()
-            //     .or(warp::path("update"))
-            //     .unify(),
-            
-            // )
-            // Match with json since the message is a serialized struct
+        // Match with json since the message is a serialized struct
         .and(warp::any())
         .and(warp::body::json())
         // Just to include transmission channel

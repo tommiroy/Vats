@@ -129,6 +129,14 @@ use rand::rngs::OsRng;
 
 #[tokio::main]
 pub async fn main() {
+    
+    
+    // -- T and N --
+    let (t,n) = (10,20 as usize);
+    // ----------------------------------------------------------------------------------------------
+
+
+
     env_logger::init();
     let args = App::parse();
 
@@ -145,10 +153,14 @@ pub async fn main() {
             port,
         }) => {
             let mut my_server = Server::new(id, identity, ca, addr, port, tx).await;
-            my_server.add_client(1, "ecu1:3031".to_string());
-            my_server.add_client(2, "ecu2:3032".to_string());
-            my_server.add_client(3, "ecu3:3033".to_string());
-            my_server.add_client(4, "ecu4:3034".to_string());
+
+            for i in 1..n+1 {
+                let port = 3030 + i;
+                // port = port.parse::<u32>().unwrap();
+                my_server.add_client(i as u32, format!("ecu{}:{}", i, port));
+        
+            }
+
 
             // Handle incoming message from tx channel
             sleep(Duration::from_millis(500)).await;
@@ -174,28 +186,18 @@ pub async fn main() {
                     match msg.msg_type {
                         MsgType::Keygen => {
                             info!("Got keygen cmd!!!! RUN!");
-                            my_server.deal_shares(3, 4).await;
+                            my_server.deal_shares(t as usize, n as usize).await;
 
-                            // println!(
-                            //     "KeyGen type:\n Sender: {}\n Message: {:?}",
-                            //     msg.sender, msg.msg
-                            // );
-                            // let res_broadcast =
-                            //     my_server.broadcast("keygen".to_string(), msg).await;
 
-                            // println!("Response from broadcast: \n {:?}", res_broadcast);
-                            // let test = my_server.send("ecu1:3031".to_owned(), "keygen".to_owned(), msg.clone()).await;
-                            // println!("Status of sending message: \n {test:?}");
-                            // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
                             my_server.nonce_handler(msg).await;
                         }
                         MsgType::Sign => {
-                            my_server.sign_request(msg.msg[0].clone(), 3).await;
+                            my_server.sign_request(msg.msg[0].clone(), t).await;
                         }
                         MsgType::SignAgg => {
-                            if let Ok(signature) = my_server.sign_aggregate(msg, 3).await {
+                            if let Ok(signature) = my_server.sign_aggregate(msg, t).await {
                                 signing::verification::ver(
                                     my_server.m.clone(),
                                     my_server.vehkey,
@@ -210,7 +212,13 @@ pub async fn main() {
                         MsgType::KeyUpd => {
                             // Start key updating
                             let mut new_msg: Vec<String> = msg.msg.clone();
-                            new_msg.push("1,2,3,4".to_owned());
+                            let mut keyupd_msg = "".to_string();
+                            for i in 1..n+1 {
+                                keyupd_msg += &format!("{},", i);
+                            }
+                            keyupd_msg.pop();
+                            new_msg.push(keyupd_msg.to_owned());
+                            
 
                             my_server.broadcast(Message {
                                 sender: "0".to_string(),
@@ -258,15 +266,7 @@ pub async fn main() {
         }) => {
             let mut my_client =
                 Client::new(id, identity, ca, addr, port, central_addr, central_port, tx).await;
-            // Testing purposes --------------------------------------------------
-            // let msg = Message {sender:"ecu1".to_string(),
-            //                             receiver: "central".to_string(),
-            //                             msg_type:MsgType::Keygen,
-            //                             msg: "This is ecu1 test".to_string()};
-            // sleep(Duration::from_millis(500)).await;
-            // let res = my_client.send("keygen".to_owned(), msg).await;
-            // println!("{res:?}");
-            // -------------------------------------------------------------------
+
 
             loop {
                 let Some(msg) = rx.recv().await else {
@@ -281,21 +281,14 @@ pub async fn main() {
                     // Match the message type and handle accordingly
                     match msg.msg_type {
                         MsgType::Keygen => {
-                            // println!("KeyGen type: {:?}", msg.msg);
                             my_client.init(msg.msg);
                             my_client.nonce_generator(2).await;
-                            // todo!("Add handler for keygen");
                         }
                         MsgType::Nonce => {
                             my_client.nonce_generator(2).await;
-                            // println!("Nonce type: {:?}", msg.msg);
-                            // todo!("Add nonce for keygen");
                         }
                         MsgType::Sign => {
                             my_client.clone().sign_msg(msg.msg).await;
-                            // &my_client.nonce_generator(2).await;
-                            // println!("Sign type: {:?}", msg.msg);
-                            // // todo!("Add sign for keygen");
                         }
                         MsgType::SignAgg => {
                             println!("Not Signing Aggregator!");
@@ -306,21 +299,13 @@ pub async fn main() {
                             my_client.context = new_context.clone();
                             let new_com: Vec<u32> = msg.msg[1].clone().split(',').into_iter().map(|id| id.parse::<u32>().expect("main-client: Cannot parse id")).collect();
                             my_client.keyupd_committee = new_com.clone();
-                            update_share(&mut my_client, new_com, 3, new_context).await;
+                            update_share(&mut my_client, new_com, t, new_context).await;
                         }
                         MsgType::KeyUpdCommitment => {
-                            // info!("Got new commitment from {}", msg.sender);
-                            // if msg.sender.parse::<u32>().unwrap() != my_client.id {
                                 my_client.commitment_handler(msg);
-                            // }
                         }
                         MsgType::KeyUpdNewShare => {
-                            // info!("Got new share from {}", msg.sender);
-                            // if msg.sender.parse::<u32>().unwrap() != my_client.id {
                                 my_client.new_share_handler(msg).await;
-                            // }
-                            // my_client.
-                            // 
                         }
                         MsgType::KeyUpdNewPubkey => {
                             my_client.new_pubkey_handler(msg);

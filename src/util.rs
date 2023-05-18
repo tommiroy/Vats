@@ -321,6 +321,8 @@ pub fn compute_lagrange_coefficient(committee: Committee, x0: u32) -> Scalar {
     lagrange_coefficient
 }
 
+// ##################### Polynomial functions 1 ############################
+
 // power function for Scalar, since Scalar does not have a pow function implemented
 pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
     let mut result = Scalar::one();
@@ -329,16 +331,9 @@ pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
     }
     result
 }
-    
-    
-// Evaluate polynom with i = index
-pub fn eval_poly(index:u32, coeffs: Vec<Scalar>) -> Scalar{
-    let mut sum = Scalar::zero();
-    let i = Scalar::from(index);
-    let check = coeffs.len()-1;
-    for (j, coeff) in coeffs.iter().rev().enumerate() {
-        sum += coeff;
 
+// ##################### Polynomial functions 2 ############################
+    
 // Evaluate polynom with i = index
 pub fn eval_poly(index:u32, coeffs: Vec<Scalar>) -> Scalar{
     let mut sum = Scalar::zero();
