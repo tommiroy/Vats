@@ -31,14 +31,14 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     // Calculate the shares    // Dealer samples t random values t-1 a   ----> t = 3
 
     let mut new_shares = HashMap::<u32, Scalar>::new();
-    for &i in signer.pubkeys.keys() {
-        let mut f_ix = Scalar::zero();
-        for (j, &aj) in a.iter().enumerate() {
-            f_ix += aj * scalar_pow(Scalar::from(i as u32), j as u32);
-        }
+    for &i in signer.pubkeys.keys() {      
+
+        let f_ix = eval_poly(i, a.clone());
+        
         // TEST
         info!("New share to {}: {}", i, scalar_to_string(&f_ix.clone()));
         new_shares.insert(i, f_ix);
+
     }
 
     // TEST NEW SHARE GENERATION - GOOD

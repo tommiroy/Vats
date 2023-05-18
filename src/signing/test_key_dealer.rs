@@ -3,18 +3,11 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
 use rand::rngs::OsRng;
-use crate::util::eval_poly;
-
+use super::super::util::scalar_pow;
 // Generate a threshold Shamir secret sharing with Feldman VSS
 pub fn dealer(
     t: usize,
     n: usize,
-) -> (
-    Vec<(u32, Scalar)>,
-    Vec<(u32, RistrettoPoint)>,
-    RistrettoPoint,
-    Scalar,
-    Vec<RistrettoPoint>,
 ) {
     let mut rng: OsRng = OsRng;
 
@@ -24,13 +17,19 @@ pub fn dealer(
         a.push(Scalar::random(&mut rng));
     }
 
+    // println!("Secret in keygen: {:?}", a[0]);
+
+    // Calculate the shares    // Dealer samples t random values t-1 a   ----> t = 3
+    // Dealer samples t random values t-1 a   ----> t = 3
+
     let mut shares = Vec::with_capacity(t);
     for i in 1..n + 1 {
-        let share = eval_poly(i as u32, a.clone());
+        let mut share = Scalar::zero();
+        for j in 0..a.len() {
+            share += a[j] * scalar_pow(Scalar::from(i as u32), j as u32);
+        }
         shares.push((i as u32, share));
     }
-
-
 
     // Generate the commitments which will be broadcasted 0<=j<=t
     let mut big_b = Vec::with_capacity(n);
@@ -47,12 +46,12 @@ pub fn dealer(
         ));
     }
 
-    // // Calculate the public key G^s
-    // let mut sk = Scalar::zero();
-    // for i in 0..t {
+    //Calculate the public key G^s
+    //let mut sk = Scalar::zero();
+    //for i in 0..t {
     //    sk += &shares[i].1;
-    // }
-    // let pk = &RISTRETTO_BASEPOINT_TABLE * &sk;
+    //}
+    //let pk = &RISTRETTO_BASEPOINT_TABLE * &sk;
 
     // Verify the shares with Feldmans VSS
     // let mut valid = true;
@@ -82,6 +81,15 @@ pub fn dealer(
     // assert_eq!(sk_prim, a[0], "key reconstruction is wrong in key_dealer");
 
     let pk = &RISTRETTO_BASEPOINT_TABLE * &a[0];
-    (shares, pks, pk, a[0], big_b)
+    // (shares, pks, pk, a[0], big_b)
 }
 
+// #################### Helper functions ###########################
+
+// fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
+//     let mut result = Scalar::one();
+//     for _ in 0..exp {
+//         result *= base;
+//     }
+//     result
+// }
