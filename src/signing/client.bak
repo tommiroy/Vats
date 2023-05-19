@@ -22,11 +22,11 @@ pub struct Client {
     // Name of the node
     pub id: u32,
     // Address of central server
-    pub central: String,
+    central: String,
     // clients:    HashMap<String, String>,
-    pub _client: reqwest::Client,
+    _client: reqwest::Client,
     // Secret share
-    pub share: Scalar,
+    share: Scalar,
     // Client public keys
     pub pubkey: RistrettoPoint,
     // Public keys: <ID, pubkey>
@@ -34,9 +34,9 @@ pub struct Client {
     // Vehicle pubkey
     pub vehkey: RistrettoPoint,
     // big r:s
-    pub big_r: Vec<RistrettoPoint>,
+    big_r: Vec<RistrettoPoint>,
     // nonces
-    pub rs: Vec<Scalar>,
+    rs: Vec<Scalar>,
     // ------------ Key Updating --------------
     // Commitments in key updating
     pub commitments: HashMap::<u32, Vec<RistrettoPoint>>,
@@ -64,6 +64,9 @@ impl Client {
         let _ca = ca.clone();
         let _identity = identity.clone();
 
+        tokio::spawn(async move {
+            _serve(_identity, _ca, _addr, _port, tx).await;
+        });
         // Build sending method for the server
         // The reason for this is so that this is not done everytime the server sends messages to other nodes.
         let _identity = get_identity(identity.clone()).await;

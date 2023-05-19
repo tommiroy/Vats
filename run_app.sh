@@ -4,7 +4,7 @@ export RUST_LOG=info
 xterm -hold -e 'cargo run cmd' &
 xterm -hold -e 'cargo run server -e docker_x509/central/central.pem -c docker_x509/ca/ca.crt -a 127.0.0.1 -p 3030' &
 
-for i in {1..20}
+for i in {1..4}
 do
     # start a termnial for each i to run the client
     port=$((3030 + i))

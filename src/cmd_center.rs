@@ -68,7 +68,7 @@ pub async fn run_cmd_center(identity: String, ca: String, addr: String, port: St
                         }
                         3_u8 => {
                             println!("context: ");
-                            let _stdin = BufReader::with_capacity(18446744073709551615 as usize,tokio::io::stdin());
+                            let _stdin = BufReader::new(tokio::io::stdin());
                             let mut _lines = _stdin.lines();
                             if let Some(_line) = _lines.next_line().await.expect("No lines") {
                                 let msg: Message = Message {

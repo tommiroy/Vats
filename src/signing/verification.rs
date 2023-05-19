@@ -20,7 +20,7 @@ pub fn ver(
 
     let lhs = &RISTRETTO_BASEPOINT_TABLE * &signature.1;
     if lhs == rhs {
-        println!("#####################################\nSignature Verification Succeded \n#####################################");
+        println!("#####################################\nSignature Verification Succeeded \n#####################################");
         true
     } else {
         println!("#####################################\nSignature Verification Failed \n#####################################");

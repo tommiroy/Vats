@@ -15,7 +15,7 @@ pub fn key_agg(committee: Committee) -> Result<RistrettoPoint, &'static str> {
     }
 
 
-    println!("key_agg: {:?}", committee.signers.keys());
+    // println!("key_agg: {:?}", committee.signers.keys());
 
     let mut rho = HashMap::<u32, Scalar>::new();
     
