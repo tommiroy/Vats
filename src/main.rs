@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::thread::spawn;
 
 /// ###################################################################
@@ -103,6 +104,8 @@ use ::log::*;
 use client::Client;
 use cmd_center::run_cmd_center;
 use server::Server;
+use signing::keyAgg::key_agg;
+use signing::signOn::sign_on;
 use util::{Committee, Message, MsgType, compute_lagrange_coefficient};
 use signing::keyUpd::update_share;
 
@@ -120,217 +123,111 @@ use rand::rngs::OsRng;
 /// ###################################################################
 /// Main Function
 /// ###################################################################
-
+use signing::*;
 
 // #[tokio::main]
-// pub async fn main() {
-//     signing::benchmark_execution_time_key_dealer(5, 10);
-// }
-
-#[tokio::main]
-pub async fn main() {
-    
-    
-    // -- T and N --
-    let (t,n) = (10,20 as usize);
-    // ----------------------------------------------------------------------------------------------
-
-
-
-    env_logger::init();
-    let args = App::parse();
-
-    let (tx, mut rx) = unbounded_channel::<String>();
-    match args.mode {
-        // ###################################################################
-        // Start as a server
-        // ###################################################################
-        Mode::Server(ServerOption {
-            id,
-            identity,
-            ca,
-            addr,
-            port,
-        }) => {
-            let mut my_server = Server::new(id, identity, ca, addr, port, tx).await;
-
-            for i in 1..n+1 {
-                let port = 3030 + i;
-                // port = port.parse::<u32>().unwrap();
-                my_server.add_client(i as u32, format!("ecu{}:{}", i, port));
+pub fn main() {
         
-            }
 
+    
+    scheme_tn(3, 4, 2);
 
-            // Handle incoming message from tx channel
-            sleep(Duration::from_millis(500)).await;
+    
 
-            // ----------------------- Test ----------------------------
-            // let mut rng: OsRng = OsRng;
-            // let var = Scalar::random(&mut rng);
-            // let com = Committee::new(my_server.pubkeys.clone());
-            // let lhs = var*compute_lagrange_coefficient(com.clone(), 3)*compute_lagrange_coefficient(com.clone(), 4);
-            // let rhs = var*compute_lagrange_coefficient(com.clone(), 4)*compute_lagrange_coefficient(com.clone(), 3);
-
-            // assert_eq!(lhs, rhs);
-            // info!("They Are Equal");
-            // ---------------------------------------------------------
-
-            loop {
-                let Some(msg) = rx.recv().await else {
-                    panic!("Server::main: received message is not a string");
-                };
-
-                if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
-                    // Match the message type and handle accordingly
-                    match msg.msg_type {
-                        MsgType::Keygen => {
-                            info!("Got keygen cmd!!!! RUN!");
-                            my_server.deal_shares(t as usize, n as usize).await;
-
-
-                        }
-                        MsgType::Nonce => {
-                            my_server.nonce_handler(msg).await;
-                        }
-                        MsgType::Sign => {
-                            my_server.sign_request(msg.msg[0].clone(), t).await;
-                        }
-                        MsgType::SignAgg => {
-                            if let Ok(signature) = my_server.sign_aggregate(msg, t).await {
-                                signing::verification::ver(
-                                    my_server.m.clone(),
-                                    my_server.vehkey,
-                                    signature,
-                                    Committee::new(my_server.committee.clone()),
-                                );
-                                my_server.clear();
-                                my_server.request_nonces().await;
-                                // Final verfication
-                            }
-                        }
-                        MsgType::KeyUpd => {
-                            // Start key updating
-                            let mut new_msg: Vec<String> = msg.msg.clone();
-                            let mut keyupd_msg = "".to_string();
-                            for i in 1..n+1 {
-                                keyupd_msg += &format!("{},", i);
-                            }
-                            keyupd_msg.pop();
-                            new_msg.push(keyupd_msg.to_owned());
-                            
-
-                            my_server.broadcast(Message {
-                                sender: "0".to_string(),
-                                receiver: "all".to_string(),
-                                msg_type: MsgType::KeyUpd, 
-                                msg: new_msg,
-                            }).await;
-
-                        }
-                        MsgType::KeyUpdCommitment => {
-                            my_server.broadcast(msg).await;
-                        }
-
-                        MsgType::KeyUpdNewShare => {
-                            my_server.send(my_server.clients.get(&msg.receiver.parse::<u32>().unwrap()).expect("main: Cannot find client").clone(), msg).await;
-                        }
-                        MsgType::KeyUpdNewPubkey => {
-                            my_server.new_pubkey_handler(msg.clone());
-                            my_server.broadcast(msg).await;
-                        }
-                        MsgType::Test => {
-                            panic!("Do something here");
-                        }
-                        _ => {
-                            println!("Placeholder")
-                        }
-                    }
-                } else {
-                    // Just for debugging
-                    println!("Not of Message struct but hey: {msg:?}");
-                }
-            }
-        }
-        // ###################################################################
-        // Start as a Client
-        // ###################################################################
-        Mode::Client(ClientOption {
-            id,
-            identity,
-            ca,
-            central_addr,
-            central_port,
-            addr,
-            port,
-        }) => {
-            let mut my_client =
-                Client::new(id, identity, ca, addr, port, central_addr, central_port, tx).await;
-
-
-            loop {
-                let Some(msg) = rx.recv().await else {
-                    panic!("Server::main: received message is not a string");
-                };
-
-                if let Ok(msg) = serde_json::from_slice::<Message>(msg.as_bytes()) {
-                    // info!("msg.sender in main: {}", msg.sender);
-                    if msg.sender.parse::<u32>().unwrap() == my_client.id {
-                        continue;
-                    }
-                    // Match the message type and handle accordingly
-                    match msg.msg_type {
-                        MsgType::Keygen => {
-                            my_client.init(msg.msg);
-                            my_client.nonce_generator(2).await;
-                        }
-                        MsgType::Nonce => {
-                            my_client.nonce_generator(2).await;
-                        }
-                        MsgType::Sign => {
-                            my_client.clone().sign_msg(msg.msg).await;
-                        }
-                        MsgType::SignAgg => {
-                            println!("Not Signing Aggregator!");
-                        }
-                        MsgType::KeyUpd => {
-                            // Start key updating
-                            let new_context = msg.msg[0].clone();
-                            my_client.context = new_context.clone();
-                            let new_com: Vec<u32> = msg.msg[1].clone().split(',').into_iter().map(|id| id.parse::<u32>().expect("main-client: Cannot parse id")).collect();
-                            my_client.keyupd_committee = new_com.clone();
-                            update_share(&mut my_client, new_com, t, new_context).await;
-                        }
-                        MsgType::KeyUpdCommitment => {
-                                my_client.commitment_handler(msg);
-                        }
-                        MsgType::KeyUpdNewShare => {
-                                my_client.new_share_handler(msg).await;
-                        }
-                        MsgType::KeyUpdNewPubkey => {
-                            my_client.new_pubkey_handler(msg);
-                        }
-
-
-                        _ => {}
-                    }
-                } else {
-                    // Just for debugging
-                    println!("Not of Message struct but hey: {msg:?}");
-                }
-            }
-        }
-        Mode::Cmd(CmdCenterOption {
-            identity,
-            ca,
-            addr,
-            port,
-        }) => {
-            run_cmd_center(identity, ca, addr, port).await;
-        }
-    }
 }
 
-// // ###################################################################
-// // cargo run client -i /home/ab000668/thesis/implementation/Vats/local_x509/client/client.pem -c /home/ab000668/thesis/implementation/Vats/local_x509/ca/ca.crt -a 127.0.0.1 -p 3031 --caddr client --cport 3030
-// // cargo run server -i /home/ab000668/thesis/implementation/Vats/local_x509/server/server.pem -c /home/ab000668/thesis/implementation/Vats/local_x509/ca/ca.crt -a 127.0.0.1 -p 3030
+
+fn scheme_tn (t:usize, n: usize, v:usize) {
+    let (shares, pks, pk, sk, big_b) = key_dealer::dealer(t, n);
+
+    let mut participants = HashMap::<u32, Client>::new();
+
+    let mut pubkeys = HashMap::<u32, RistrettoPoint>::new();
+    let _: Vec<_> = pks.iter().map(|pk| pubkeys.insert(pk.0, pk.1)).collect();
+
+    for (id, share) in shares {
+        let client: Client = Client {
+            id: id,
+            central: "".to_string(),
+            _client: reqwest::Client::builder().use_rustls_tls().build().unwrap(),
+            share: share,
+            pubkey: pks[(id-1) as usize].1,
+            pubkeys: pubkeys.clone(),
+            vehkey: pk,
+            big_r: Vec::<RistrettoPoint>::new(),
+            rs: Vec::<Scalar>::new(),
+            commitments: HashMap::<u32, Vec<RistrettoPoint>>::new(),
+            commitments_msg: Vec::<Message>::new(),
+            new_share_msg: Vec::<Message>::new(),
+            keyupd_committee: Vec::<u32>::new(),
+            context: "".to_owned(),
+
+        };
+        participants.insert(id, client);
+    }
+
+
+    // Create a committee for other methods
+    let mut temp = HashMap::<u32, RistrettoPoint>::new();
+    for (id, client) in participants.clone() {
+        temp.insert(id, client.pubkey);
+    }
+
+    let committee = Committee::new(temp);
+
+    // Everybody does signoff
+    let mut outs = Vec::<Vec<RistrettoPoint>>::new();
+    for (id, mut signer) in participants.clone() {
+        (signer.big_r, signer.rs) = signOff::sign_off(v as u32);
+        outs.push(signer.big_r.clone());
+        participants.insert(id, signer);
+    }
+
+    // SA then does the first sign agg
+    // This is the aggregated commitment used in signon
+    let out = signAgg::sign_agg(outs, v as u32);
+
+    // Signers create and store partial signatures
+    let mut partsigns = HashMap::<u32, (RistrettoPoint, (Scalar, RistrettoPoint))>::new();
+    let msg = "Message to sign".to_string();
+    for (id, signer) in participants {
+        let partsign_i = sign_on(signer.clone(), 
+                                                                signer.rs.clone(), 
+                                                                out.clone(), 
+                                                                msg.clone(), 
+                                                                committee.clone(), 
+                                                                signer.big_r);
+
+        partsigns.insert(id, partsign_i);
+    }
+
+    let tilde_r = tilde_r::calculate_tilde_r(committee.clone(), out, msg.clone());
+    let mut z = Scalar::zero();
+    let mut cheaters = Vec::<u32>::new();
+
+    for id in committee.signers.keys().clone() {
+        let &(tilde_rx, (zx, big_rx)) = partsigns.get(id).unwrap();
+        if tilde_r != tilde_rx {
+            cheaters.push(*id);
+        }
+        let &big_yx = committee.signers.get(id).unwrap();
+        let rho_x = musig_coef(committee.clone(), big_yx);
+        let lambda_x = compute_lagrange_coefficient(committee.clone(), *id);
+        let c_x = hash_sig(pk, tilde_rx, msg.clone());
+        let ver = &RISTRETTO_BASEPOINT_TABLE * &partsigns.get(id).unwrap().1.0;
+        if ver != big_rx + big_yx * (c_x * (rho_x + lambda_x)) {
+            cheaters.push(*id);
+        } else {
+            z += zx;
+        }
+    }
+    
+    
+    verification::ver(
+        msg.clone(),
+        pk,
+        (tilde_r, z),
+        committee,
+    );
+
+}
