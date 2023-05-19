@@ -103,6 +103,7 @@ mod util;
 use ::log::*;
 use client::Client;
 use cmd_center::run_cmd_center;
+use openssl::sign;
 use server::Server;
 use signing::keyAgg::key_agg;
 use signing::signOn::sign_on;
@@ -124,21 +125,31 @@ use rand::rngs::OsRng;
 /// Main Function
 /// ###################################################################
 use signing::*;
+use std::time::Instant;
+use std::fs::File;
+use std::io::{Error, Write};
 
 // #[tokio::main]
 pub fn main() {
-        
 
+    let _ts = [34,67,67,134,101,201,167,334];
+    let _ns = [100,100,200,200,300,300,500,500];
     
-    scheme_tn(3, 4, 2);
-
+    for (&t,&n) in _ts.iter().zip(_ns.iter()) {
+        let path = format!("{}-{}",t,n);
+        scheme_tn(t, n, 2, &path);
+    }
     
 
 }
 
 
-fn scheme_tn (t:usize, n: usize, v:usize) {
+fn scheme_tn (t:usize, n: usize, v:usize, path : &str) {
+    let mut file = File::create(path).unwrap();
+
+    let before = Instant::now();
     let (shares, pks, pk, sk, big_b) = key_dealer::dealer(t, n);
+    writeln!(file,"Keygen,{},{},{:.0}", t, n, before.elapsed().as_millis()).unwrap();
 
     let mut participants = HashMap::<u32, Client>::new();
 
@@ -167,44 +178,81 @@ fn scheme_tn (t:usize, n: usize, v:usize) {
     }
 
 
+    
     // Create a committee for other methods
-    let mut temp = HashMap::<u32, RistrettoPoint>::new();
+    let mut temp = HashMap::<u32, RistrettoPoint>::with_capacity(t);
+    
+    let mut count = t as i32; 
     for (id, client) in participants.clone() {
+
+        count = count - 1;
+        if count < 0 {
+            break;
+        }
+        
         temp.insert(id, client.pubkey);
     }
+    let committee: Committee = Committee::new(temp);
 
-    let committee = Committee::new(temp);
-
+    for (id, _) in participants.clone() {
+        if !committee.signers.contains_key(&id) {
+            participants.remove(&id);
+        }
+    }
     // Everybody does signoff
+
+    let mut sign_off_times = Vec::<u128>::with_capacity(t);
+    //
     let mut outs = Vec::<Vec<RistrettoPoint>>::new();
     for (id, mut signer) in participants.clone() {
+        let before = Instant::now();
         (signer.big_r, signer.rs) = signOff::sign_off(v as u32);
         outs.push(signer.big_r.clone());
         participants.insert(id, signer);
+        sign_off_times.push(before.elapsed().as_millis());
     }
+    // calculate average signoff time
+    let mut signoff_avg: u128 = sign_off_times.iter().sum::<u128>();
+    signoff_avg = signoff_avg/sign_off_times.len() as u128;
+    writeln!(file,"SignOff,{},{},{:.0}", t, n, signoff_avg).unwrap();
 
     // SA then does the first sign agg
     // This is the aggregated commitment used in signon
     let out = signAgg::sign_agg(outs, v as u32);
-
+    
     // Signers create and store partial signatures
     let mut partsigns = HashMap::<u32, (RistrettoPoint, (Scalar, RistrettoPoint))>::new();
     let msg = "Message to sign".to_string();
+
+    let mut sign_on_times = Vec::<u128>::with_capacity(t);
     for (id, signer) in participants {
+        let before = Instant::now();
         let partsign_i = sign_on(signer.clone(), 
                                                                 signer.rs.clone(), 
                                                                 out.clone(), 
                                                                 msg.clone(), 
                                                                 committee.clone(), 
                                                                 signer.big_r);
-
-        partsigns.insert(id, partsign_i);
+                                                                partsigns.insert(id, partsign_i);
+        sign_on_times.push(before.elapsed().as_millis());
     }
+    
+
+    // calculate average signon time
+    
+    let mut avg: u128 = sign_on_times.iter().sum::<u128>();
+    avg = avg/sign_on_times.len() as u128;
+    writeln!(file,"SignOn,{},{},{:.0}", t, n, avg).unwrap();
+    
+
+
+
+
 
     let tilde_r = tilde_r::calculate_tilde_r(committee.clone(), out, msg.clone());
     let mut z = Scalar::zero();
     let mut cheaters = Vec::<u32>::new();
-
+    let before = Instant::now();
     for id in committee.signers.keys().clone() {
         let &(tilde_rx, (zx, big_rx)) = partsigns.get(id).unwrap();
         if tilde_r != tilde_rx {
@@ -215,19 +263,22 @@ fn scheme_tn (t:usize, n: usize, v:usize) {
         let lambda_x = compute_lagrange_coefficient(committee.clone(), *id);
         let c_x = hash_sig(pk, tilde_rx, msg.clone());
         let ver = &RISTRETTO_BASEPOINT_TABLE * &partsigns.get(id).unwrap().1.0;
+        
         if ver != big_rx + big_yx * (c_x * (rho_x + lambda_x)) {
             cheaters.push(*id);
         } else {
             z += zx;
         }
     }
-    
-    
+    writeln!(file,"SignAgg2,{},{},{:.0}", t, n, before.elapsed().as_millis()).unwrap();
+
+    let before = Instant::now();
     verification::ver(
         msg.clone(),
         pk,
         (tilde_r, z),
         committee,
     );
+    writeln!(file,"Verification,{},{},{:.0}", t, n, before.elapsed().as_millis()).unwrap();
 
 }
