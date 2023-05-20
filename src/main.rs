@@ -147,7 +147,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     let (shares, pks, pk, sk, big_b) = key_dealer::dealer(t, n);
     writeln!(
         file,
-        "Keygen,{},{},{:.0}",
+        "Keygen,{},{},{:.6}",
         t,
         n,
         before.elapsed().as_millis()
@@ -213,7 +213,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     // calculate average signoff time
     let mut signoff_avg: u128 = sign_off_times.iter().sum::<u128>();
     signoff_avg = signoff_avg / sign_off_times.len() as u128;
-    writeln!(file, "SignOff,{},{},{:.0}", t, n, signoff_avg).unwrap();
+    writeln!(file, "SignOff,{},{},{:.6}", t, n, signoff_avg).unwrap();
 
     // SA then does the first sign agg
     // This is the aggregated commitment used in signon
@@ -221,7 +221,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     let out = signAgg::sign_agg(outs, v as u32);
     writeln!(
         file,
-        "SignAgg,{},{},{:.0}",
+        "SignAgg,{},{},{:.6}",
         t,
         n,
         signagg_time.elapsed().as_millis()
@@ -251,7 +251,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
 
     let mut avg: u128 = sign_on_times.iter().sum::<u128>();
     avg = avg / sign_on_times.len() as u128;
-    writeln!(file, "SignOn,{},{},{:.0}", t, n, avg).unwrap();
+    writeln!(file, "SignOn,{},{},{:.6}", t, n, avg).unwrap();
 
     let tilde_r = tilde_r::calculate_tilde_r(committee.clone(), out, msg.clone());
     let mut z = Scalar::zero();
@@ -276,7 +276,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     }
     writeln!(
         file,
-        "SignAgg2,{},{},{:.0}",
+        "SignAgg2,{},{},{:.6}",
         t,
         n,
         before.elapsed().as_millis()
@@ -287,7 +287,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     verification::ver(msg.clone(), pk, (tilde_r, z), committee);
     writeln!(
         file,
-        "Verification,{},{},{:.0}",
+        "Verification,{},{},{:.6}",
         t,
         n,
         before.elapsed().as_millis()
