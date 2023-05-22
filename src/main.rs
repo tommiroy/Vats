@@ -106,9 +106,10 @@ use cmd_center::run_cmd_center;
 use openssl::sign;
 use server::Server;
 use signing::keyAgg::key_agg;
-use signing::keyUpd::update_share;
+// use signing::keyUpd::update_share;
 use signing::signOn::sign_on;
 use util::{compute_lagrange_coefficient, Committee, Message, MsgType};
+use signing::keyUpd_local::*;
 
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::time::{sleep, Duration};
@@ -198,6 +199,18 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
             participants.remove(&id);
         }
     }
+
+
+    // ##################### KEY UPDATING ############################
+    // let mut key_upd_times = Vec::<u128>::with_capacity(t);
+    for (id, mut signer) in &participants {
+        let before = Instant::now();
+        let (new_shares, new_commitments) = update_share(&mut signer, t, "key_upd".to_string());
+        key_upd_times.push(before.elapsed().as_millis());
+        participants.insert(id, signer);
+    }
+
+
     // Everybody does signoff
 
     let mut sign_off_times = Vec::<u128>::with_capacity(t);

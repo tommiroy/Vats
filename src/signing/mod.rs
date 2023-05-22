@@ -11,6 +11,7 @@ pub mod signOff;
 pub mod signOn;
 pub mod tilde_r;
 pub mod verification;
+pub mod keyUpd_local;
 
 use std::time::Instant;
 use std::fs::File;
