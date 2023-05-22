@@ -1,0 +1,6 @@
+Keygen,5,10,1
+SignOff,5,10,0
+SignAgg,5,10,0
+SignOn,5,10,4
+SignAgg2,5,10,5
+Verification,5,10,2

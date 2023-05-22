@@ -268,7 +268,7 @@ impl Client {
             // let mut my_new_share = self.get_share();
 
             for msg in self.new_share_msg.clone() {
-                let f_xi = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
+                let f_xi: Scalar = string_to_scalar(&msg.msg[0]).expect("client-new_share_handler: cannot parse share from string");
                 let x = msg.sender.parse::<u32>().expect("client-new_share_handler: Cannot parse sender's id");
                 info!("New share received from {}: {}", x, msg.msg[0]);                
                 // Upon receiving (i, fx(i)), Pi verifies their shares by calculating:

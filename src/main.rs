@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::default;
 use std::thread::spawn;
 
 /// ###################################################################
@@ -132,13 +133,16 @@ use util::*;
 
 // #[tokio::main]
 pub fn main() {
-    let _ts = [34, 67, 67, 134, 101, 201, 167, 334];
-    let _ns = [100, 100, 200, 200, 300, 300, 500, 500];
+    // let _ts = [34, 67, 67, 134, 101, 201, 167, 334];
+    // let _ns = [100, 100, 200, 200, 300, 300, 500, 500];
 
-    for (&t, &n) in _ts.iter().zip(_ns.iter()) {
-        let path = format!("{}-{}", t, n);
-        scheme_tn(t, n, 2, &path);
-    }
+    // for (&t, &n) in _ts.iter().zip(_ns.iter()) {
+    //     let path = format!("{}-{}", t, n);
+    //     scheme_tn(t, n, 2, &path);
+    // }
+
+    scheme_tn(5, 10, 2, "test.txt");
+
 }
 
 fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
@@ -180,6 +184,62 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
         participants.insert(id, client);
     }
 
+    // let mut original_participants = participants.clone();
+    // 
+    let mut temp = HashMap::<u32, RistrettoPoint>::new();
+
+    for (id, client) in participants.clone() {
+        temp.insert(id, client.pubkey);
+    }
+
+    let committee: Committee = Committee::new(pubkeys.clone());
+
+    // ##################### KEY UPDATING ############################
+    let mut update_shares = HashMap::<u32, (HashMap<u32, Scalar>, Vec<RistrettoPoint>)>::new();
+    for (my_id, mut signer) in participants.clone() {
+        update_shares.insert(my_id, update_share(&mut signer, t, "key_upd".to_string()));
+        // println!("Length of new_shares: {}", new_shares.len());
+    }
+    
+
+    for (_, signer) in &mut participants {
+        signer.set_share(Scalar::zero());
+    }
+
+    for (my_id, (new_shares, new_commitments)) in update_shares {
+        // println!("{my_id} updates: ");
+        for (id, share) in new_shares {
+            let old_share = participants.get(&id).unwrap().get_share();
+            // println!("{id}-{}", scalar_to_string(&old_share));
+
+            let mut rhs = RistrettoPoint::identity();
+            for (k, big_a) in new_commitments.iter().enumerate() {
+                rhs += big_a * scalar_pow(Scalar::from(id),k as u32)
+            }
+            let lhs = &RISTRETTO_BASEPOINT_TABLE * &share;
+            
+            if rhs == lhs {
+                // print!("{} ", id);
+                // println!("{}", scalar_to_string(&participants.get_mut(&id).unwrap().get_share()));
+                let temp = share*compute_lagrange_coefficient(committee.clone(), my_id);
+                participants.get_mut(&id).unwrap().set_share(old_share + temp);
+                // if id == 1 {
+                //     println!("1: {}-{}", my_id, scalar_to_string(&participants.get_mut(&id).unwrap().get_share()));
+                // }
+            // println!("{}", scalar_to_string(&participants.get_mut(&id).unwrap().get_share()));
+            // println!();
+            } else {
+                println!("-------- Key Updating failed -------------");
+                panic!("SHITTTTTTTTTTT");
+            }
+        }
+               
+    }
+
+    for (_, mut signer) in &mut participants {
+        signer.pubkey = &RISTRETTO_BASEPOINT_TABLE * &signer.get_share();
+    }
+
     // Create a committee for other methods
     let mut temp = HashMap::<u32, RistrettoPoint>::with_capacity(t);
 
@@ -192,6 +252,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
 
         temp.insert(id, client.pubkey);
     }
+
     let committee: Committee = Committee::new(temp);
 
     for (id, _) in participants.clone() {
@@ -199,17 +260,6 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
             participants.remove(&id);
         }
     }
-
-
-    // ##################### KEY UPDATING ############################
-    // let mut key_upd_times = Vec::<u128>::with_capacity(t);
-    for (id, mut signer) in &participants {
-        let before = Instant::now();
-        let (new_shares, new_commitments) = update_share(&mut signer, t, "key_upd".to_string());
-        key_upd_times.push(before.elapsed().as_millis());
-        participants.insert(id, signer);
-    }
-
 
     // Everybody does signoff
 
