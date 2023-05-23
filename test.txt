@@ -1,6 +1,7 @@
-Keygen,5,10,1
-SignOff,5,10,0
-SignAgg,5,10,0
-SignOn,5,10,4
-SignAgg2,5,10,5
-Verification,5,10,2
+Keygen,34,100,51
+KeyUpd,34,100,3433
+SignOff,34,100,0
+SignAgg,34,100,0
+SignOn,34,100,37
+SignAgg2,34,100,175
+Verification,34,100,31

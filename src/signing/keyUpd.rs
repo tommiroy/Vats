@@ -33,7 +33,7 @@ pub async fn update_share(signer:&mut Client, participants: Vec<u32>, t: usize, 
     let mut new_shares = HashMap::<u32, Scalar>::new();
     for &i in signer.pubkeys.keys() {      
 
-        let f_ix = eval_poly(i, a.clone());
+        let f_ix = eval_poly(Scalar::from(i), a.clone());
         
         // TEST
         info!("New share to {}: {}", i, scalar_to_string(&f_ix.clone()));
@@ -126,10 +126,12 @@ pub fn verify_sigma(me: &Client, sigma: (RistrettoPoint, Scalar), big_a : Ristre
 pub fn verify_new_share(me: &mut Client, sender_id: u32, new_share: Scalar) -> bool {
     let mut rhs = RistrettoPoint::identity();
     if me.commitments.contains_key(&sender_id) {
-        for (k, &big_a) in me.commitments.get(&sender_id).expect("keyUpd-verify_new_share: cannot get id").iter().enumerate() {
-            rhs += big_a * scalar_pow(Scalar::from(me.id),k as u32);
+        // for (k, &big_a) in me.commitments.get(&sender_id).expect("keyUpd-verify_new_share: cannot get id").iter().enumerate() {
+        //     rhs += big_a * scalar_pow(Scalar::from(me.id),k as u32);
 
-        }
+        // }
+
+        let rhs = eval_poly_rist(Scalar::from(me.id), me.commitments.get(&sender_id).expect("keyUpd-verify_new_share: cannot get id").clone());
 
     } else {
         info!("Not Found commitment from {sender_id}");
@@ -152,9 +154,12 @@ pub fn update_pubkeys(me: &mut Client) {
                 continue;
             }
             let mut temp = RistrettoPoint::identity();
-            for (k, big_a) in me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").iter().enumerate() {
-                temp += big_a*scalar_pow(Scalar::from(x), k as u32);
-            }
+            // for (k, big_a) in me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").iter().enumerate() {
+            //     temp += big_a*scalar_pow(Scalar::from(x), k as u32);
+            // }
+
+            let temp = eval_poly_rist(Scalar::from(x), me.commitments.get(&x).expect("keyUpd-update_pubkeys: cannot get id").clone());
+
             new_pubkey += temp*compute_lagrange_coefficient(com.clone(), j);
         }
         new_pubkeys.insert(x, new_pubkey);

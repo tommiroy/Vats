@@ -4,6 +4,7 @@ use base64::{engine::general_purpose, Engine as _};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::traits::Identity as _;
 use reqwest::{Certificate, Identity};
 use serde::{Deserialize, Serialize};
 use tokio::fs::File;
@@ -324,22 +325,38 @@ pub fn compute_lagrange_coefficient(committee: Committee, x0: u32) -> Scalar {
 // ##################### Polynomial functions 1 ############################
 
 // power function for Scalar, since Scalar does not have a pow function implemented
-pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
-    let mut result = Scalar::one();
-    for _ in 0..exp {
-        result *= base;
-    }
-    result
-}
+// pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
+//     let mut result = Scalar::one();
+//     for _ in 0..exp {
+//         result *= base;
+//     }
+//     result
+// }
 
 // ##################### Polynomial functions 2 ############################
     
 // Evaluate polynom with i = index
-pub fn eval_poly(index:u32, coeffs: Vec<Scalar>) -> Scalar{
+pub fn eval_poly(index:Scalar, coeffs: Vec<Scalar>) -> Scalar{
     let mut sum = Scalar::zero();
     let i = Scalar::from(index);
 
     // ____________________________________
+
+    let check = coeffs.len()-1;
+    for (j, coeff) in coeffs.iter().rev().enumerate() {
+        sum += coeff;
+
+        if j != check {
+            sum *= i;
+        }
+    }
+    sum
+}
+
+
+pub fn eval_poly_rist(index:Scalar, coeffs: Vec<RistrettoPoint>) -> RistrettoPoint{
+    let mut sum = RistrettoPoint::identity();
+    let i = Scalar::from(index);
 
     let check = coeffs.len()-1;
     for (j, coeff) in coeffs.iter().rev().enumerate() {

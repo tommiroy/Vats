@@ -4,6 +4,7 @@ use curve25519_dalek::traits::Identity;
 
 use super::super::client::Client;
 use super::super::util::*;
+use super::tilde_r;
 use ::log::*;
 
 use crate::signing::keyAgg::key_agg;
@@ -28,34 +29,41 @@ pub fn sign_on(
 
     // hash b_pre with sha512
     // prod = out[j]^(b^(j-1))
-    let mut tilde_R = RistrettoPoint::identity();
-    for (j, _) in out.iter().enumerate() {
-        let bpowj = scalar_pow(b, j as u32);
-        // make bpowj a scalar
+    // let mut tilde_R = RistrettoPoint::identity();
+    // for (j, _) in out.iter().enumerate() {
+    //     let bpowj = scalar_pow(b, j as u32);
+    //     // make bpowj a scalar
 
-        tilde_R += out[j] * bpowj;
-    }
-    let mut bigR_i = RistrettoPoint::identity();
-    for (j, _) in outi.iter().enumerate() {
-        let bpowj = scalar_pow(b, j as u32);
-        // make bpowj a scalar
+    //     tilde_R += out[j] * bpowj;
+    // }
 
-        bigR_i += outi[j] * bpowj;
-    }
+    let tilde_R = eval_poly_rist(b, out);
+    // let tilde_R = eval_poly_rist(b, out);
+
+    // let mut bigR_i = RistrettoPoint::identity();
+    // for (j, _) in outi.iter().enumerate() {
+    //     let bpowj = scalar_pow(b, j as u32);
+    //     // make bpowj a scalar
+
+    //     bigR_i += outi[j] * bpowj;
+    // }
+
+    let bigR_i = eval_poly_rist(b, outi);
 
     let c = hash_sig(signer.vehkey, tilde_R, m);
 
 
     // make z_1
 
-    let mut rhf = Scalar::zero();
-    for (j, _) in out.iter().enumerate() {
-        let bpowj = scalar_pow(b, j as u32);
-        // make bpowj a scalar
-        let temp = state1[j] * bpowj;
-        // make rhf to Scaler
-        rhf += temp;
-    }
+    // let mut rhf = Scalar::zero();
+    // for (j, _) in out.iter().enumerate() {
+    //     let bpowj = scalar_pow(b, j as u32);
+    //     // make bpowj a scalar
+    //     let temp = state1[j] * bpowj;
+    //     // make rhf to Scaler
+    //     rhf += temp;
+    // }
+    let rhf = eval_poly(b, state1);
     // calculate z_1
     let lagrange_coeff = compute_lagrange_coefficient(signers, signer.id);
 

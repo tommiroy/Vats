@@ -20,13 +20,20 @@ pub fn dealer(
 
     // Dealer samples t random values t-1 a   ----> t = 3
     let mut a: Vec<Scalar> = Vec::with_capacity(t);
-    for _ in 0..t {
+    for _ in 0..t {// power function for Scalar, since Scalar does not have a pow function implemented
+        // pub fn scalar_pow(base: Scalar, exp: u32) -> Scalar {
+        //     let mut result = Scalar::one();
+        //     for _ in 0..exp {
+        //         result *= base;
+        //     }
+        //     result
+        
         a.push(Scalar::random(&mut rng));
     }
 
     let mut shares = Vec::with_capacity(t);
     for i in 1..n + 1 {
-        let share = eval_poly(i as u32, a.clone());
+        let share = eval_poly(Scalar::from(i as u32), a.clone());
         shares.push((i as u32, share));
     }
 

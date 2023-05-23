@@ -141,7 +141,7 @@ pub fn main() {
     //     scheme_tn(t, n, 2, &path);
     // }
 
-    scheme_tn(5, 10, 2, "test.txt");
+    scheme_tn(34, 100, 2, "test.txt");
 
 }
 
@@ -195,10 +195,11 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     let committee: Committee = Committee::new(pubkeys.clone());
 
     // ##################### KEY UPDATING ############################
+
+    let before = Instant::now();
     let mut update_shares = HashMap::<u32, (HashMap<u32, Scalar>, Vec<RistrettoPoint>)>::new();
     for (my_id, mut signer) in participants.clone() {
         update_shares.insert(my_id, update_share(&mut signer, t, "key_upd".to_string()));
-        // println!("Length of new_shares: {}", new_shares.len());
     }
     
 
@@ -207,27 +208,16 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     }
 
     for (my_id, (new_shares, new_commitments)) in update_shares {
-        // println!("{my_id} updates: ");
         for (id, share) in new_shares {
             let old_share = participants.get(&id).unwrap().get_share();
-            // println!("{id}-{}", scalar_to_string(&old_share));
 
-            let mut rhs = RistrettoPoint::identity();
-            for (k, big_a) in new_commitments.iter().enumerate() {
-                rhs += big_a * scalar_pow(Scalar::from(id),k as u32)
-            }
+            let rhs: RistrettoPoint = eval_poly_rist(Scalar::from(id), new_commitments.clone());
+
             let lhs = &RISTRETTO_BASEPOINT_TABLE * &share;
             
             if rhs == lhs {
-                // print!("{} ", id);
-                // println!("{}", scalar_to_string(&participants.get_mut(&id).unwrap().get_share()));
                 let temp = share*compute_lagrange_coefficient(committee.clone(), my_id);
                 participants.get_mut(&id).unwrap().set_share(old_share + temp);
-                // if id == 1 {
-                //     println!("1: {}-{}", my_id, scalar_to_string(&participants.get_mut(&id).unwrap().get_share()));
-                // }
-            // println!("{}", scalar_to_string(&participants.get_mut(&id).unwrap().get_share()));
-            // println!();
             } else {
                 println!("-------- Key Updating failed -------------");
                 panic!("SHITTTTTTTTTTT");
@@ -235,6 +225,8 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
         }
                
     }
+    let keyUpd_avg = before.elapsed().as_millis()/n as u128;
+    writeln!(file, "KeyUpd,{},{},{:.6}", t, n, keyUpd_avg).unwrap();
 
     for (_, mut signer) in &mut participants {
         signer.pubkey = &RISTRETTO_BASEPOINT_TABLE * &signer.get_share();

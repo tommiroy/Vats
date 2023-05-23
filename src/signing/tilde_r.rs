@@ -8,10 +8,12 @@ pub fn calculate_tilde_r(com: Committee, out: Vec<RistrettoPoint>, m: String) ->
 
     let b = hash_non(tilde_y, out.clone(), m.clone());
 
-    let mut tilde_r = RistrettoPoint::identity();
-    for (j, _) in out.iter().enumerate() {
-        let bpowj = scalar_pow(b, j as u32);
-        tilde_r += out[j] * bpowj;
-    }
+    // let mut tilde_r = RistrettoPoint::identity();
+    // for (j, _) in out.iter().enumerate() {
+    //     let bpowj = scalar_pow(b, j as u32);
+    //     tilde_r += out[j] * bpowj;
+    // }
+
+    let tilde_r = eval_poly_rist(b, out);
     tilde_r
 }
