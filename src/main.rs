@@ -108,9 +108,9 @@ use openssl::sign;
 use server::Server;
 use signing::keyAgg::key_agg;
 // use signing::keyUpd::update_share;
+use signing::keyUpd_local::*;
 use signing::signOn::sign_on;
 use util::{compute_lagrange_coefficient, Committee, Message, MsgType};
-use signing::keyUpd_local::*;
 
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::time::{sleep, Duration};
@@ -133,16 +133,13 @@ use util::*;
 
 // #[tokio::main]
 pub fn main() {
-    // let _ts = [34, 67, 67, 134, 101, 201, 167, 334];
-    // let _ns = [100, 100, 200, 200, 300, 300, 500, 500];
+    let _ts = [34, 67, 67, 134, 101, 201, 167, 334];
+    let _ns = [100, 100, 200, 200, 300, 300, 500, 500];
 
-    // for (&t, &n) in _ts.iter().zip(_ns.iter()) {
-    //     let path = format!("{}-{}", t, n);
-    //     scheme_tn(t, n, 2, &path);
-    // }
-
-    scheme_tn(34, 100, 2, "test.txt");
-
+    for (&t, &n) in _ts.iter().zip(_ns.iter()) {
+        let path = format!("{}-{}", t, n);
+        scheme_tn(t, n, 2, &path);
+    }
 }
 
 fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
@@ -185,7 +182,7 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     }
 
     // let mut original_participants = participants.clone();
-    // 
+    //
     let mut temp = HashMap::<u32, RistrettoPoint>::new();
 
     for (id, client) in participants.clone() {
@@ -195,13 +192,12 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
     let committee: Committee = Committee::new(pubkeys.clone());
 
     // ##################### KEY UPDATING ############################
-
     let before = Instant::now();
+
     let mut update_shares = HashMap::<u32, (HashMap<u32, Scalar>, Vec<RistrettoPoint>)>::new();
     for (my_id, mut signer) in participants.clone() {
         update_shares.insert(my_id, update_share(&mut signer, t, "key_upd".to_string()));
     }
-    
 
     for (_, signer) in &mut participants {
         signer.set_share(Scalar::zero());
@@ -214,18 +210,20 @@ fn scheme_tn(t: usize, n: usize, v: usize, path: &str) {
             let rhs: RistrettoPoint = eval_poly_rist(Scalar::from(id), new_commitments.clone());
 
             let lhs = &RISTRETTO_BASEPOINT_TABLE * &share;
-            
+
             if rhs == lhs {
-                let temp = share*compute_lagrange_coefficient(committee.clone(), my_id);
-                participants.get_mut(&id).unwrap().set_share(old_share + temp);
+                let temp = share * compute_lagrange_coefficient(committee.clone(), my_id);
+                participants
+                    .get_mut(&id)
+                    .unwrap()
+                    .set_share(old_share + temp);
             } else {
                 println!("-------- Key Updating failed -------------");
                 panic!("SHITTTTTTTTTTT");
             }
         }
-               
     }
-    let keyUpd_avg = before.elapsed().as_millis()/n as u128;
+    let keyUpd_avg = before.elapsed().as_millis() / n as u128;
     writeln!(file, "KeyUpd,{},{},{:.6}", t, n, keyUpd_avg).unwrap();
 
     for (_, mut signer) in &mut participants {
