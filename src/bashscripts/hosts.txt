@@ -1,0 +1,11 @@
+127.0.0.1       localhost
+::1     localhost ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+172.18.0.2      central
+172.18.0.3      ecu1
+172.18.0.6      ecu2
+172.18.0.4      ecu3
+172.18.0.5      ecu4
